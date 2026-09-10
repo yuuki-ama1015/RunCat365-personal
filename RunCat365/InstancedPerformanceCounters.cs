@@ -114,6 +114,30 @@ namespace RunCat365
             return values;
         }
 
+        internal List<long> ReadRawValues()
+        {
+            var values = new List<long>(countersByInstance.Count);
+            var deadInstances = new List<string>();
+            foreach (var pair in countersByInstance)
+            {
+                try
+                {
+                    values.Add(pair.Value.NextSample().RawValue);
+                }
+                catch (Exception exception) when (IsExpectedCounterException(exception))
+                {
+                    Debug.WriteLine($"{GetType().Name}: counter {pair.Key} failed: {exception.Message}");
+                    deadInstances.Add(pair.Key);
+                }
+            }
+            foreach (var instanceName in deadInstances)
+            {
+                countersByInstance[instanceName].Close();
+                countersByInstance.Remove(instanceName);
+            }
+            return values;
+        }
+
         internal void Close()
         {
             foreach (var counter in countersByInstance.Values) counter.Close();

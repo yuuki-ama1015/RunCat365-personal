@@ -1,59 +1,22 @@
-# RunCat 365
+# RunCat365-personal
 
-**A cute running cat animation on your Windows Taskbar.**
+**Personal private derivative** of [runcat-dev/RunCat365](https://github.com/runcat-dev/RunCat365).
 
-> [!CAUTION]
->
-> - This project is for Windows, so we do not accept inquiries about macOS version.
-> - We do not accept issues or pull requests in languages other than English.
-> - Issues that do not follow the Issue Template will be closed without question.
+Upstream is a cute running cat animation on the Windows Taskbar (`C#` / Win32 / `.NET 9.0`).
 
-[![Issues](https://img.shields.io/github/issues/runcat-dev/RunCat365)](https://github.com/runcat-dev/RunCat365/issues)
-[![Forks](https://img.shields.io/github/forks/runcat-dev/RunCat365)](https://github.com/runcat-dev/RunCat365/network/members)
-[![Stars](https://img.shields.io/github/stars/runcat-dev/RunCat365)](https://github.com/runcat-dev/RunCat365/stargazers)
-[![Top Language](https://img.shields.io/github/languages/top/runcat-dev/RunCat365)](https://github.com/runcat-dev/RunCat365/)
-[![Releases](https://img.shields.io/github/v/release/runcat-dev/RunCat365)](https://github.com/runcat-dev/RunCat365/releases)
-[![License](https://img.shields.io/github/license/runcat-dev/RunCat365)](https://github.com/runcat-dev/RunCat365/)
+## Attribution & license
 
-`C#` `Win32` `.NET 9.0` `Visual Studio` `RunCat`
+- **Upstream:** [https://github.com/runcat-dev/RunCat365](https://github.com/runcat-dev/RunCat365)
+- **License:** Apache License 2.0 (see [LICENSE](./LICENSE)) — same as upstream
+- This repository is a personal fork/copy for private use and small fixes. It does **not** claim authorship of the upstream project (copyright remains with Takuto Nakamura / Studio Kyome and upstream contributors).
 
-## Demo
+## Personal changes
 
-<img src="./docs/images/demo.gif" width="600" height="200" alt="demo" />
-<br/>
-<img src="./docs/images/overview.png" width="600" height="600" alt="overview" />
-<br/>
-<img src="./docs/images/custom_runner.png" width="600" height="467" alt="overview" />
-<br/>
-<img src="./docs/images/endless_game.png" width="600" height="375" alt="endless game" />
+- **Storage:** show every ready fixed drive (not only `C:` / `D:`). Removable, network, and CD/DVD drives are skipped. Drive labels use a generic localized format (`{0} Drive`, etc.).
 
-## Installation
+## Build / run
 
-RunCat 365 is available for installation on the Microsoft Store.
+- Requirement: Windows 10 version 19041.0 or higher, .NET 9 SDK / Visual Studio
+- Open `RunCat365.sln` and build, or: `dotnet build RunCat365.sln`
 
-- Requirement: Windows 10 version 19041.0 or higher
-- Microsoft Store: https://apps.microsoft.com/detail/9nw5lpnvwfwj
-- Language:
-  - Chinese (simplified)
-  - Chinese (traditional)
-  - English (default)
-  - French
-  - German
-  - Japanese
-  - Korean
-  - Spanish
-
-## RunCat Developers' Community
-
-This is a space for RunCat contributors to communicate closely regarding development and operations.
-We welcome anyone interested in contributing to RunCat.
-However, please note that this is a place for discussing features, not for submitting requests.
-For requests, please create an Issue according to the template.
-
-Portal: https://runcat-dev.github.io
-
-## Contributors
-
-<a href="https://github.com/runcat-dev/RunCat365/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=runcat-dev/RunCat365" />
-</a>
+Official Microsoft Store listing (upstream): https://apps.microsoft.com/detail/9nw5lpnvwfwj

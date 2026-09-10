@@ -222,11 +222,8 @@
   <data name="SystemInfo_Storage" xml:space="preserve">
     <value>存储</value>
   </data>
-  <data name="SystemInfo_DriveC" xml:space="preserve">
-    <value>C 盘</value>
-  </data>
-  <data name="SystemInfo_DriveD" xml:space="preserve">
-    <value>D 盘</value>
+  <data name="SystemInfo_DriveFormat" xml:space="preserve">
+    <value>{0} 盘</value>
   </data>
   <data name="SystemInfo_Network" xml:space="preserve">
     <value>网络</value>

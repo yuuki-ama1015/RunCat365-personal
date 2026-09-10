@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Takuto Nakamura
+// Copyright 2025 Takuto Nakamura
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -12,55 +12,26 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
+using System.Globalization;
 using RunCat365.Properties;
 
 namespace RunCat365
 {
-    enum Drive
-    {
-        C,
-        D
-    }
-
-    internal static class DriveExtension
-    {
-        internal static string GetString(this Drive drive)
-        {
-            return drive switch
-            {
-                Drive.C => "C Drive",
-                Drive.D => "D Drive",
-                _ => "",
-            };
-        }
-
-        internal static string GetLocalizedString(this Drive drive)
-        {
-            return drive switch
-            {
-                Drive.C => Strings.SystemInfo_DriveC,
-                Drive.D => Strings.SystemInfo_DriveD,
-                _ => "",
-            };
-        }
-
-        internal static Drive? CreateFromString(string? value)
-        {
-            return value switch
-            {
-                "C:\\" => Drive.C,
-                "D:\\" => Drive.D,
-                _ => null,
-            };
-        }
-    }
-
     struct StorageInfo
     {
-        internal Drive Drive { get; set; }
+        internal string DriveLetter { get; set; }
         internal long TotalSize { get; set; }
         internal long AvailableSpaceSize { get; set; }
         internal long UsedSpaceSize { get; set; }
+
+        internal string GetLocalizedLabel()
+        {
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                Strings.SystemInfo_DriveFormat,
+                DriveLetter
+            );
+        }
     }
 
     internal static class StorageInfoExtension
@@ -79,7 +50,7 @@ namespace RunCat365
                 var info = storageInfoList[i];
                 var isLastItem = (i == storageInfoList.Count - 1);
                 var percentage = ((double)info.UsedSpaceSize / info.TotalSize) * 100.0;
-                resultLines.Add(TreeFormatter.CreateNode($"{info.Drive.GetLocalizedString()}: {percentage:f1}%", isLastItem));
+                resultLines.Add(TreeFormatter.CreateNode($"{info.GetLocalizedLabel()}: {percentage:f1}%", isLastItem));
                 resultLines.Add(TreeFormatter.CreateNestedNode($"{Strings.SystemInfo_Used}: {info.UsedSpaceSize.ToByteFormatted()}", isLastItem, false));
                 resultLines.Add(TreeFormatter.CreateNestedNode($"{Strings.SystemInfo_Available}: {info.AvailableSpaceSize.ToByteFormatted()}", isLastItem, true));
             }
@@ -100,23 +71,28 @@ namespace RunCat365
             var allDrives = DriveInfo.GetDrives();
             foreach (var driveInfo in allDrives)
             {
-                if (driveInfo.IsReady && DriveExtension.CreateFromString(driveInfo.Name) is Drive drive)
+                if (!driveInfo.IsReady || driveInfo.DriveType != DriveType.Fixed)
                 {
-                    try
+                    continue;
+                }
+
+                try
+                {
+                    var driveLetter = driveInfo.Name.Length > 0
+                        ? driveInfo.Name[0].ToString()
+                        : driveInfo.Name;
+                    var storageInfo = new StorageInfo
                     {
-                        var storageInfo = new StorageInfo
-                        {
-                            Drive = drive,
-                            TotalSize = driveInfo.TotalSize,
-                            AvailableSpaceSize = driveInfo.AvailableFreeSpace,
-                            UsedSpaceSize = driveInfo.TotalSize - driveInfo.AvailableFreeSpace
-                        };
-                        storageInfoList.Add(storageInfo);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error: {ex.Message}");
-                    }
+                        DriveLetter = driveLetter,
+                        TotalSize = driveInfo.TotalSize,
+                        AvailableSpaceSize = driveInfo.AvailableFreeSpace,
+                        UsedSpaceSize = driveInfo.TotalSize - driveInfo.AvailableFreeSpace
+                    };
+                    storageInfoList.Add(storageInfo);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: {ex.Message}");
                 }
             }
         }

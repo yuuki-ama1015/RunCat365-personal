@@ -222,11 +222,8 @@
   <data name="SystemInfo_Storage" xml:space="preserve">
     <value>儲存</value>
   </data>
-  <data name="SystemInfo_DriveC" xml:space="preserve">
-    <value>C 槽</value>
-  </data>
-  <data name="SystemInfo_DriveD" xml:space="preserve">
-    <value>D 槽</value>
+  <data name="SystemInfo_DriveFormat" xml:space="preserve">
+    <value>{0} 槽</value>
   </data>
   <data name="SystemInfo_Network" xml:space="preserve">
     <value>網路</value>

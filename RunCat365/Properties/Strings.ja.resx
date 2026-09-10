@@ -222,11 +222,8 @@
   <data name="SystemInfo_Storage" xml:space="preserve">
     <value>ストレージ</value>
   </data>
-  <data name="SystemInfo_DriveC" xml:space="preserve">
-    <value>Ｃドライブ</value>
-  </data>
-  <data name="SystemInfo_DriveD" xml:space="preserve">
-    <value>Ｄドライブ</value>
+  <data name="SystemInfo_DriveFormat" xml:space="preserve">
+    <value>{0}ドライブ</value>
   </data>
   <data name="SystemInfo_Network" xml:space="preserve">
     <value>ネットワーク</value>

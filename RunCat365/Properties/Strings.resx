@@ -222,11 +222,8 @@
   <data name="SystemInfo_Storage" xml:space="preserve">
     <value>Storage</value>
   </data>
-  <data name="SystemInfo_DriveC" xml:space="preserve">
-    <value>C Drive</value>
-  </data>
-  <data name="SystemInfo_DriveD" xml:space="preserve">
-    <value>D Drive</value>
+  <data name="SystemInfo_DriveFormat" xml:space="preserve">
+    <value>{0} Drive</value>
   </data>
   <data name="SystemInfo_Network" xml:space="preserve">
     <value>Network</value>

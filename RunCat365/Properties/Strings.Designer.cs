@@ -334,20 +334,11 @@ namespace RunCat365.Properties {
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to C Drive.
+        ///   Looks up a localized string similar to {0} Drive.
         /// </summary>
-        internal static string SystemInfo_DriveC {
+        internal static string SystemInfo_DriveFormat {
             get {
-                return ResourceManager.GetString("SystemInfo_DriveC", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to D Drive.
-        /// </summary>
-        internal static string SystemInfo_DriveD {
-            get {
-                return ResourceManager.GetString("SystemInfo_DriveD", resourceCulture);
+                return ResourceManager.GetString("SystemInfo_DriveFormat", resourceCulture);
             }
         }
 

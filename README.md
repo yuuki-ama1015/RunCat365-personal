@@ -12,7 +12,7 @@ Upstream is a cute running cat animation on the Windows Taskbar (`C#` / Win32 / 
 
 ## Personal changes
 
-- **Storage:** show every ready fixed drive (not only `C:` / `D:`). Removable, network, and CD/DVD drives are skipped. Drive labels use a generic localized format (`{0} Drive`, etc.).
+Local derivative with up to four tray indicators (CPU / GPU / Memory / Temperature), GPU dedicated usage (used only), all ready fixed drives in storage info, and temperature→speed mapping. See commit history for details.
 
 ## Build / run
 

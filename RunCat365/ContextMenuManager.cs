@@ -210,10 +210,10 @@ namespace RunCat365
                     var nextEnabled = !item.Checked;
                     setIndicatorEnabled(source, nextEnabled);
                     // Re-read after Program enforces "at least one" rule.
+                    // ChangeIndicatorEnabled already syncs visibility/runner for this indicator;
+                    // DropDownOpening refreshes checkbox states when the menu reopens.
                     var configs = getConfigs();
                     item.Checked = configs.TryGetValue(source, out var updated) && updated.Enabled;
-                    SyncFromConfigs(getConfigs, getSystemTheme, getManualTheme, customRunnerRepository, isSpeedSourceAvailable);
-                    RefreshEnabledCheckStates(indicatorsMenu, getConfigs);
                 };
 
                 var runnersMenu = new CustomToolStripMenuItem(Strings.Menu_Runner)

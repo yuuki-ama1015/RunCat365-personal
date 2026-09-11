@@ -120,6 +120,9 @@ namespace RunCat365
             fetchTimer.Tick += new EventHandler(FetchTick);
             fetchTimer.Start();
 
+#if DEBUG
+            VerifyTemperatureToLoadMapping();
+#endif
             ShowBalloonTipIfNeeded();
         }
 
@@ -465,6 +468,30 @@ namespace RunCat365
                 * 100.0f;
             return Math.Clamp(load, 0.0f, 100.0f);
         }
+
+#if DEBUG
+        /// <summary>
+        /// Tiny runnable check for TemperatureToLoad clamp/scale.
+        /// Runs automatically on DEBUG startup (Debug.Assert).
+        /// Manual: build Debug and launch, or call VerifyTemperatureToLoadMapping() from a Debug session.
+        /// </summary>
+        private static void VerifyTemperatureToLoadMapping()
+        {
+            static void Expect(float celsius, float expected)
+            {
+                var actual = TemperatureToLoad(celsius);
+                Debug.Assert(
+                    Math.Abs(actual - expected) < 0.01f,
+                    $"TemperatureToLoad({celsius}) expected {expected}, got {actual}"
+                );
+            }
+
+            Expect(40f, 0f);
+            Expect(95f, 100f);
+            Expect(20f, 0f);
+            Expect(120f, 100f);
+        }
+#endif
 
         private int CalculateInterval(float load)
         {

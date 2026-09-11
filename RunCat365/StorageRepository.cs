@@ -12,7 +12,6 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-using System.Globalization;
 using RunCat365.Properties;
 
 namespace RunCat365
@@ -27,7 +26,6 @@ namespace RunCat365
         internal string GetLocalizedLabel()
         {
             return string.Format(
-                CultureInfo.CurrentCulture,
                 Strings.SystemInfo_DriveFormat,
                 DriveLetter
             );

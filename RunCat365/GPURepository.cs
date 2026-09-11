@@ -13,7 +13,6 @@
 //    limitations under the License.
 
 using System.Diagnostics;
-using Microsoft.Win32;
 using RunCat365.Properties;
 
 namespace RunCat365
@@ -22,9 +21,8 @@ namespace RunCat365
     {
         internal float Average { get; set; }
         internal float Maximum { get; set; }
-        internal float? MemoryLoad { get; set; }
+        // Dedicated Usage (max across GPU Adapter Memory instances). Used-only; no total/%.
         internal long? UsedMemory { get; set; }
-        internal long? TotalMemory { get; set; }
     }
 
     internal static class GPUInfoExtension
@@ -36,9 +34,7 @@ namespace RunCat365
 
         internal static List<string> GenerateIndicator(this GPUInfo gpuInfo)
         {
-            var hasMemory = gpuInfo.MemoryLoad.HasValue
-                && gpuInfo.UsedMemory.HasValue
-                && gpuInfo.TotalMemory.HasValue;
+            var hasMemory = gpuInfo.UsedMemory.HasValue;
 
             var resultLines = new List<string>
             {
@@ -49,9 +45,13 @@ namespace RunCat365
 
             if (hasMemory)
             {
-                resultLines.Add(TreeFormatter.CreateNode($"{Strings.SystemInfo_Memory}: {gpuInfo.MemoryLoad.Value:f1}%", false));
-                resultLines.Add(TreeFormatter.CreateNode($"{Strings.SystemInfo_Used}: {gpuInfo.UsedMemory.Value.ToByteFormatted()}", false));
-                resultLines.Add(TreeFormatter.CreateNode($"{Strings.SystemInfo_Total}: {gpuInfo.TotalMemory.Value.ToByteFormatted()}", true));
+                // Reuse SystemInfo_Memory + SystemInfo_Used: "Memory: X Used"
+                resultLines.Add(
+                    TreeFormatter.CreateNode(
+                        $"{Strings.SystemInfo_Memory}: {gpuInfo.UsedMemory.Value.ToByteFormatted()} {Strings.SystemInfo_Used}",
+                        true
+                    )
+                );
             }
 
             return resultLines;
@@ -93,13 +93,9 @@ namespace RunCat365
     {
         private const int GPU_INFO_LIST_LIMIT_SIZE = 5;
         private const int REFRESH_INTERVAL_TICKS = 30;
-        private const string DISPLAY_ADAPTER_CLASS_KEY =
-            @"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}";
-        private const string MEMORY_SIZE_VALUE_NAME = "HardwareInformation.qwMemorySize";
 
         private readonly GPUPerformanceCounters? counters;
         private readonly GPUAdapterMemoryPerformanceCounters? memoryCounters;
-        private readonly long? totalDedicatedMemory;
         private readonly List<GPUInfo> gpuInfoList = [];
         private int ticksSinceLastRefresh;
 
@@ -109,7 +105,6 @@ namespace RunCat365
         {
             counters = GPUPerformanceCounters.TryCreate();
             memoryCounters = GPUAdapterMemoryPerformanceCounters.TryCreate();
-            totalDedicatedMemory = TryGetDedicatedVideoMemoryTotal();
         }
 
         internal void Update()
@@ -151,9 +146,7 @@ namespace RunCat365
             {
                 Average = gpuInfoList.Average(x => x.Average),
                 Maximum = gpuInfoList.Max(x => x.Maximum),
-                MemoryLoad = latest.MemoryLoad,
-                UsedMemory = latest.UsedMemory,
-                TotalMemory = latest.TotalMemory
+                UsedMemory = latest.UsedMemory
             };
         }
 
@@ -165,7 +158,7 @@ namespace RunCat365
 
         private void ApplyMemoryInfo(ref GPUInfo gpuInfo)
         {
-            if (memoryCounters is null || totalDedicatedMemory is null or <= 0)
+            if (memoryCounters is null)
             {
                 return;
             }
@@ -180,70 +173,11 @@ namespace RunCat365
                 var usedMemory = rawValues.Max();
                 if (usedMemory < 0) return;
 
-                var memoryLoad = (float)((double)usedMemory / totalDedicatedMemory.Value * 100.0);
                 gpuInfo.UsedMemory = usedMemory;
-                gpuInfo.TotalMemory = totalDedicatedMemory.Value;
-                gpuInfo.MemoryLoad = Math.Clamp(memoryLoad, 0f, 100f);
             }
             catch (Exception exception)
             {
                 Debug.WriteLine($"GPURepository.ApplyMemoryInfo failed: {exception.Message}");
-            }
-        }
-
-        // Total dedicated VRAM from driver registry (HardwareInformation.qwMemorySize).
-        // Preferred over Win32_VideoController.AdapterRAM, which is UInt32 and often 4 GB-capped.
-        private static long? TryGetDedicatedVideoMemoryTotal()
-        {
-            try
-            {
-                using var classKey = Registry.LocalMachine.OpenSubKey(DISPLAY_ADAPTER_CLASS_KEY);
-                if (classKey is null) return null;
-
-                long maxMemory = 0;
-                foreach (var subKeyName in classKey.GetSubKeyNames())
-                {
-                    if (subKeyName.Length != 4 || !subKeyName.All(char.IsDigit))
-                    {
-                        continue;
-                    }
-
-                    using var adapterKey = classKey.OpenSubKey(subKeyName);
-                    if (adapterKey is null) continue;
-                    if (!TryReadDedicatedMemoryValue(adapterKey, out var memorySize)) continue;
-
-                    if (memorySize > maxMemory)
-                    {
-                        maxMemory = memorySize;
-                    }
-                }
-
-                return maxMemory > 0 ? maxMemory : null;
-            }
-            catch (Exception exception)
-            {
-                Debug.WriteLine($"TryGetDedicatedVideoMemoryTotal failed: {exception.Message}");
-                return null;
-            }
-        }
-
-        private static bool TryReadDedicatedMemoryValue(RegistryKey adapterKey, out long memorySize)
-        {
-            memorySize = 0;
-            var rawValue = adapterKey.GetValue(MEMORY_SIZE_VALUE_NAME);
-            switch (rawValue)
-            {
-                case long longValue when longValue > 0:
-                    memorySize = longValue;
-                    return true;
-                case ulong ulongValue when ulongValue > 0:
-                    memorySize = unchecked((long)ulongValue);
-                    return true;
-                case int intValue when intValue > 0:
-                    memorySize = intValue;
-                    return true;
-                default:
-                    return false;
             }
         }
     }

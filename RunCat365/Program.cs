@@ -53,6 +53,8 @@ namespace RunCat365
     {
         private const int FETCH_TIMER_DEFAULT_INTERVAL = 1000;
         private const int FETCH_COUNTER_SIZE = 5;
+        private const float TemperatureIdleCelsius = 40.0f;
+        private const float TemperatureFullCelsius = 95.0f;
         private readonly CPURepository cpuRepository;
         private readonly GPURepository gpuRepository;
         private readonly MemoryRepository memoryRepository;
@@ -147,13 +149,20 @@ namespace RunCat365
                     ParseRunner(UserSettings.Default.MemoryRunner, Runner.Horse),
                     NullIfEmpty(UserSettings.Default.MemoryCustomRunnerName)
                 );
+                indicatorConfigs[SpeedSource.Temperature] = new IndicatorConfig(
+                    SpeedSource.Temperature,
+                    UserSettings.Default.TemperatureIndicatorEnabled,
+                    ParseRunner(UserSettings.Default.TemperatureRunner, Runner.Cat),
+                    NullIfEmpty(UserSettings.Default.TemperatureCustomRunnerName)
+                );
             }
 
-            if (indicatorConfigs.TryGetValue(SpeedSource.GPU, out var gpuConfig)
-                && gpuConfig.Enabled
-                && !IsSpeedSourceAvailable(SpeedSource.GPU))
+            foreach (var config in indicatorConfigs.Values)
             {
-                gpuConfig.Enabled = false;
+                if (config.Enabled && !IsSpeedSourceAvailable(config.SpeedSource))
+                {
+                    config.Enabled = false;
+                }
             }
 
             EnsureAtLeastOneEnabled();
@@ -224,6 +233,12 @@ namespace RunCat365
                 UserSettings.Default.MemoryRunner = memory.Runner.ToString();
                 UserSettings.Default.MemoryCustomRunnerName = memory.CustomRunnerName ?? string.Empty;
             }
+            if (indicatorConfigs.TryGetValue(SpeedSource.Temperature, out var temperature))
+            {
+                UserSettings.Default.TemperatureIndicatorEnabled = temperature.Enabled;
+                UserSettings.Default.TemperatureRunner = temperature.Runner.ToString();
+                UserSettings.Default.TemperatureCustomRunnerName = temperature.CustomRunnerName ?? string.Empty;
+            }
             UserSettings.Default.IndicatorsMigrated = true;
             UserSettings.Default.Save();
         }
@@ -245,6 +260,7 @@ namespace RunCat365
                 SpeedSource.CPU => true,
                 SpeedSource.GPU => gpuRepository.IsAvailable,
                 SpeedSource.Memory => true,
+                SpeedSource.Temperature => temperatureRepository.IsAvailable,
                 _ => false,
             };
         }
@@ -309,7 +325,7 @@ namespace RunCat365
                 }
             }
 
-            if (source == SpeedSource.GPU && enabled && !IsSpeedSourceAvailable(SpeedSource.GPU))
+            if (enabled && !IsSpeedSourceAvailable(source))
             {
                 config.Enabled = false;
                 SaveIndicatorSettings();
@@ -403,6 +419,11 @@ namespace RunCat365
             TemperatureInfo? temperatureInfo
         )
         {
+            if (speedSource == SpeedSource.Temperature)
+            {
+                return temperatureInfo?.GetDescription(temperatureUnit) ?? "";
+            }
+
             var baseDescription = speedSource switch
             {
                 SpeedSource.CPU => cpuInfo.GetDescription(),
@@ -417,15 +438,32 @@ namespace RunCat365
                 : $"{baseDescription}\n{temperatureDescription}";
         }
 
-        private static float GetLoad(SpeedSource speedSource, CPUInfo cpuInfo, GPUInfo? gpuInfo, MemoryInfo memoryInfo)
+        private static float GetLoad(
+            SpeedSource speedSource,
+            CPUInfo cpuInfo,
+            GPUInfo? gpuInfo,
+            MemoryInfo memoryInfo,
+            TemperatureInfo? temperatureInfo
+        )
         {
             return speedSource switch
             {
                 SpeedSource.CPU => cpuInfo.Total,
                 SpeedSource.GPU => gpuInfo?.Maximum ?? 0f,
                 SpeedSource.Memory => memoryInfo.MemoryLoad,
+                SpeedSource.Temperature => temperatureInfo.HasValue
+                    ? TemperatureToLoad(temperatureInfo.Value.MaximumCelsius)
+                    : 0f,
                 _ => 0f,
             };
+        }
+
+        private static float TemperatureToLoad(float maximumCelsius)
+        {
+            var load = (maximumCelsius - TemperatureIdleCelsius)
+                / (TemperatureFullCelsius - TemperatureIdleCelsius)
+                * 100.0f;
+            return Math.Clamp(load, 0.0f, 100.0f);
         }
 
         private int CalculateInterval(float load)
@@ -456,7 +494,7 @@ namespace RunCat365
                 );
                 contextMenuManager.SetIndicatorText(config.SpeedSource, description);
 
-                var load = GetLoad(config.SpeedSource, cpuInfo, gpuInfo, memoryInfo);
+                var load = GetLoad(config.SpeedSource, cpuInfo, gpuInfo, memoryInfo, temperatureInfo);
                 contextMenuManager.SetIndicatorInterval(config.SpeedSource, CalculateInterval(load));
             }
 

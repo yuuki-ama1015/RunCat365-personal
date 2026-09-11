@@ -230,6 +230,42 @@ namespace RunCat365.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TemperatureIndicatorEnabled {
+            get {
+                return ((bool)(this["TemperatureIndicatorEnabled"]));
+            }
+            set {
+                this["TemperatureIndicatorEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Cat")]
+        public string TemperatureRunner {
+            get {
+                return ((string)(this["TemperatureRunner"]));
+            }
+            set {
+                this["TemperatureRunner"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TemperatureCustomRunnerName {
+            get {
+                return ((string)(this["TemperatureCustomRunnerName"]));
+            }
+            set {
+                this["TemperatureCustomRunnerName"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool IndicatorsMigrated {
             get {
                 return ((bool)(this["IndicatorsMigrated"]));

@@ -22,6 +22,7 @@ namespace RunCat365
         CPU,
         GPU,
         Memory,
+        Temperature,
     }
 
     internal static class SpeedSourceExtension
@@ -33,6 +34,7 @@ namespace RunCat365
                 SpeedSource.CPU => Strings.SystemInfo_CPU,
                 SpeedSource.GPU => Strings.SystemInfo_GPU,
                 SpeedSource.Memory => Strings.SystemInfo_Memory,
+                SpeedSource.Temperature => Strings.SystemInfo_Temperature,
                 _ => "",
             };
         }
@@ -44,6 +46,7 @@ namespace RunCat365
                 "CPU" => SpeedSource.CPU,
                 "GPU" => SpeedSource.GPU,
                 "Memory" => SpeedSource.Memory,
+                "Temperature" => SpeedSource.Temperature,
                 _ => null,
             };
 

@@ -36,6 +36,7 @@ namespace RunCat365
                 SpeedSource.CPU => Runner.Cat,
                 SpeedSource.GPU => Runner.Parrot,
                 SpeedSource.Memory => Runner.Horse,
+                SpeedSource.Temperature => Runner.Cat,
                 _ => Runner.Cat,
             };
         }

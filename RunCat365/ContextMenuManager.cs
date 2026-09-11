@@ -167,11 +167,8 @@ namespace RunCat365
 
             foreach (SpeedSource speedSource in Enum.GetValues<SpeedSource>())
             {
-                if (!isSpeedSourceAvailable(speedSource) && speedSource == SpeedSource.GPU)
-                {
-                    // Still create a tray indicator so settings can fall back cleanly,
-                    // but it stays hidden unless GPU becomes available and enabled.
-                }
+                // Always create a tray indicator (including GPU/Temperature) so settings
+                // can fall back cleanly; unavailable sources stay hidden.
                 var indicator = new TrayIndicator(speedSource, contextMenuStrip);
                 indicators[speedSource] = indicator;
             }

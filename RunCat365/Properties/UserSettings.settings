@@ -53,6 +53,15 @@
     <Setting Name="MemoryCustomRunnerName" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="TemperatureIndicatorEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="TemperatureRunner" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Cat</Value>
+    </Setting>
+    <Setting Name="TemperatureCustomRunnerName" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
     <Setting Name="IndicatorsMigrated" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>

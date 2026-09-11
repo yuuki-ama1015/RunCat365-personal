@@ -53,7 +53,6 @@ namespace RunCat365
     {
         private const int FETCH_TIMER_DEFAULT_INTERVAL = 1000;
         private const int FETCH_COUNTER_SIZE = 5;
-        private const int ANIMATE_TIMER_DEFAULT_INTERVAL = 200;
         private readonly CPURepository cpuRepository;
         private readonly GPURepository gpuRepository;
         private readonly MemoryRepository memoryRepository;
@@ -64,27 +63,19 @@ namespace RunCat365
         private readonly LaunchAtStartupManager launchAtStartupManager;
         private readonly ContextMenuManager contextMenuManager;
         private readonly FormsTimer fetchTimer;
-        private readonly FormsTimer animateTimer;
-        private Runner runner = Runner.Cat;
+        private readonly Dictionary<SpeedSource, IndicatorConfig> indicatorConfigs = [];
         private Theme manualTheme = Theme.System;
         private TemperatureUnit temperatureUnit = TemperatureUnit.System;
         private FPSMaxLimit fpsMaxLimit = FPSMaxLimit.FPS40;
-        private SpeedSource speedSource = SpeedSource.CPU;
-        private string? customRunnerName;
         private int fetchCounter = 5;
         private bool isFetching;
 
         public RunCat365ApplicationContext()
         {
             UserSettings.Default.Reload();
-            _ = Enum.TryParse(UserSettings.Default.Runner, out runner);
             _ = Enum.TryParse(UserSettings.Default.Theme, out manualTheme);
             _ = Enum.TryParse(UserSettings.Default.TemperatureUnit, out temperatureUnit);
             _ = Enum.TryParse(UserSettings.Default.FPSMaxLimit, out fpsMaxLimit);
-            _ = Enum.TryParse(UserSettings.Default.SpeedSource, out speedSource);
-            customRunnerName = string.IsNullOrEmpty(UserSettings.Default.CustomRunnerName)
-                ? null
-                : UserSettings.Default.CustomRunnerName;
 
             SystemEvents.UserPreferenceChanged += new UserPreferenceChangedEventHandler(UserPreferenceChanged);
 
@@ -97,20 +88,18 @@ namespace RunCat365
             customRunnerRepository = new CustomRunnerRepository();
             launchAtStartupManager = new LaunchAtStartupManager();
 
-            ResolveSpeedSource();
+            LoadIndicatorConfigs();
 
             contextMenuManager = new ContextMenuManager(
-                () => runner,
-                r => ChangeRunner(r),
+                () => indicatorConfigs,
+                (source, enabled) => ChangeIndicatorEnabled(source, enabled),
+                (source, runner) => ChangeIndicatorRunner(source, runner),
                 customRunnerRepository,
-                () => customRunnerName,
-                name => ApplyCustomRunner(name),
+                (source, name) => ApplyCustomRunner(source, name),
                 deletedName => HandleCustomRunnerDeleted(deletedName),
                 () => GetSystemTheme(),
                 () => manualTheme,
                 t => ChangeManualTheme(t),
-                () => speedSource,
-                s => ChangeSpeedSource(s),
                 s => IsSpeedSourceAvailable(s),
                 () => fpsMaxLimit,
                 f => ChangeFPSMaxLimit(f),
@@ -122,18 +111,6 @@ namespace RunCat365
                 () => Application.Exit()
             );
 
-            if (customRunnerName is not null)
-            {
-                ApplyCustomRunner(customRunnerName);
-            }
-
-            animateTimer = new FormsTimer
-            {
-                Interval = ANIMATE_TIMER_DEFAULT_INTERVAL
-            };
-            animateTimer.Tick += new EventHandler(AnimationTick);
-            animateTimer.Start();
-
             fetchTimer = new FormsTimer
             {
                 Interval = FETCH_TIMER_DEFAULT_INTERVAL
@@ -142,6 +119,113 @@ namespace RunCat365
             fetchTimer.Start();
 
             ShowBalloonTipIfNeeded();
+        }
+
+        private void LoadIndicatorConfigs()
+        {
+            if (!UserSettings.Default.IndicatorsMigrated)
+            {
+                MigrateFromLegacySettings();
+            }
+            else
+            {
+                indicatorConfigs[SpeedSource.CPU] = new IndicatorConfig(
+                    SpeedSource.CPU,
+                    UserSettings.Default.CpuIndicatorEnabled,
+                    ParseRunner(UserSettings.Default.CpuRunner, Runner.Cat),
+                    NullIfEmpty(UserSettings.Default.CpuCustomRunnerName)
+                );
+                indicatorConfigs[SpeedSource.GPU] = new IndicatorConfig(
+                    SpeedSource.GPU,
+                    UserSettings.Default.GpuIndicatorEnabled,
+                    ParseRunner(UserSettings.Default.GpuRunner, Runner.Parrot),
+                    NullIfEmpty(UserSettings.Default.GpuCustomRunnerName)
+                );
+                indicatorConfigs[SpeedSource.Memory] = new IndicatorConfig(
+                    SpeedSource.Memory,
+                    UserSettings.Default.MemoryIndicatorEnabled,
+                    ParseRunner(UserSettings.Default.MemoryRunner, Runner.Horse),
+                    NullIfEmpty(UserSettings.Default.MemoryCustomRunnerName)
+                );
+            }
+
+            if (indicatorConfigs.TryGetValue(SpeedSource.GPU, out var gpuConfig)
+                && gpuConfig.Enabled
+                && !IsSpeedSourceAvailable(SpeedSource.GPU))
+            {
+                gpuConfig.Enabled = false;
+            }
+
+            EnsureAtLeastOneEnabled();
+            SaveIndicatorSettings();
+        }
+
+        private void MigrateFromLegacySettings()
+        {
+            _ = Enum.TryParse(UserSettings.Default.SpeedSource, out SpeedSource legacySource);
+            if (!Enum.IsDefined(legacySource)) legacySource = SpeedSource.CPU;
+
+            _ = Enum.TryParse(UserSettings.Default.Runner, out Runner legacyRunner);
+            if (!Enum.IsDefined(legacyRunner)) legacyRunner = Runner.Cat;
+
+            var legacyCustom = NullIfEmpty(UserSettings.Default.CustomRunnerName);
+
+            foreach (SpeedSource source in Enum.GetValues<SpeedSource>())
+            {
+                var enabled = source == legacySource;
+                var runner = enabled ? legacyRunner : IndicatorConfig.DefaultRunnerFor(source);
+                var customName = enabled ? legacyCustom : null;
+                indicatorConfigs[source] = new IndicatorConfig(source, enabled, runner, customName);
+            }
+
+            UserSettings.Default.IndicatorsMigrated = true;
+        }
+
+        private static Runner ParseRunner(string value, Runner fallback)
+        {
+            return Enum.TryParse(value, out Runner runner) && Enum.IsDefined(runner) ? runner : fallback;
+        }
+
+        private static string? NullIfEmpty(string? value)
+        {
+            return string.IsNullOrEmpty(value) ? null : value;
+        }
+
+        private void EnsureAtLeastOneEnabled()
+        {
+            if (indicatorConfigs.Values.Any(c => c.Enabled && IsSpeedSourceAvailable(c.SpeedSource)))
+            {
+                return;
+            }
+
+            if (indicatorConfigs.TryGetValue(SpeedSource.CPU, out var cpuConfig))
+            {
+                cpuConfig.Enabled = true;
+            }
+        }
+
+        private void SaveIndicatorSettings()
+        {
+            if (indicatorConfigs.TryGetValue(SpeedSource.CPU, out var cpu))
+            {
+                UserSettings.Default.CpuIndicatorEnabled = cpu.Enabled;
+                UserSettings.Default.CpuRunner = cpu.Runner.ToString();
+                UserSettings.Default.CpuCustomRunnerName = cpu.CustomRunnerName ?? string.Empty;
+            }
+            if (indicatorConfigs.TryGetValue(SpeedSource.GPU, out var gpu))
+            {
+                UserSettings.Default.GpuIndicatorEnabled = gpu.Enabled;
+                UserSettings.Default.GpuRunner = gpu.Runner.ToString();
+                UserSettings.Default.GpuCustomRunnerName = gpu.CustomRunnerName ?? string.Empty;
+            }
+            if (indicatorConfigs.TryGetValue(SpeedSource.Memory, out var memory))
+            {
+                UserSettings.Default.MemoryIndicatorEnabled = memory.Enabled;
+                UserSettings.Default.MemoryRunner = memory.Runner.ToString();
+                UserSettings.Default.MemoryCustomRunnerName = memory.CustomRunnerName ?? string.Empty;
+            }
+            UserSettings.Default.IndicatorsMigrated = true;
+            UserSettings.Default.Save();
         }
 
         private static Theme GetSystemTheme()
@@ -165,14 +249,6 @@ namespace RunCat365
             };
         }
 
-        private void ResolveSpeedSource()
-        {
-            if (!IsSpeedSourceAvailable(speedSource))
-            {
-                ChangeSpeedSource(SpeedSource.CPU);
-            }
-        }
-
         private void ShowBalloonTipIfNeeded()
         {
             if (!cpuRepository.IsAvailable)
@@ -190,15 +266,12 @@ namespace RunCat365
         private void UserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
         {
             if (e.Category != UserPreferenceCategory.General) return;
-            var systemTheme = GetSystemTheme();
-            if (contextMenuManager.HasActiveCustomIcons)
-            {
-                contextMenuManager.RecolorActiveCustomIcons(systemTheme, manualTheme);
-            }
-            else
-            {
-                contextMenuManager.SetIcons(systemTheme, manualTheme, runner);
-            }
+            contextMenuManager.RefreshThemeIcons(
+                () => indicatorConfigs,
+                GetSystemTheme(),
+                manualTheme,
+                customRunnerRepository
+            );
         }
 
         private static void OpenProjectPage()
@@ -217,38 +290,88 @@ namespace RunCat365
             }
         }
 
-        private void ChangeRunner(Runner r)
+        private void ChangeIndicatorEnabled(SpeedSource source, bool enabled)
         {
-            runner = r;
-            customRunnerName = null;
-            UserSettings.Default.Runner = runner.ToString();
-            UserSettings.Default.CustomRunnerName = string.Empty;
-            UserSettings.Default.Save();
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+
+            if (!enabled)
+            {
+                var otherEnabled = indicatorConfigs.Values.Any(c =>
+                    c.SpeedSource != source
+                    && c.Enabled
+                    && IsSpeedSourceAvailable(c.SpeedSource));
+                if (!otherEnabled)
+                {
+                    // Keep at least one indicator enabled.
+                    config.Enabled = true;
+                    SaveIndicatorSettings();
+                    return;
+                }
+            }
+
+            if (source == SpeedSource.GPU && enabled && !IsSpeedSourceAvailable(SpeedSource.GPU))
+            {
+                config.Enabled = false;
+                SaveIndicatorSettings();
+                return;
+            }
+
+            config.Enabled = enabled;
+            SaveIndicatorSettings();
+            contextMenuManager.SetIndicatorVisible(source, config.Enabled);
+            if (config.Enabled)
+            {
+                if (!string.IsNullOrEmpty(config.CustomRunnerName))
+                {
+                    ApplyCustomRunner(source, config.CustomRunnerName);
+                }
+                else
+                {
+                    contextMenuManager.ApplyBuiltInIcons(source, GetSystemTheme(), manualTheme, config.Runner);
+                }
+            }
         }
 
-        private void ApplyCustomRunner(string name)
+        private void ChangeIndicatorRunner(SpeedSource source, Runner runner)
         {
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            config.Runner = runner;
+            config.CustomRunnerName = null;
+            SaveIndicatorSettings();
+            contextMenuManager.ApplyBuiltInIcons(source, GetSystemTheme(), manualTheme, runner);
+        }
+
+        private void ApplyCustomRunner(SpeedSource source, string name)
+        {
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
             var frames = customRunnerRepository.LoadFrames(name);
             if (frames.Count == 0) return;
-            customRunnerName = name;
-            UserSettings.Default.CustomRunnerName = name;
-            UserSettings.Default.Save();
-            contextMenuManager.SetCustomIcons(frames, GetSystemTheme(), manualTheme);
+            config.CustomRunnerName = name;
+            SaveIndicatorSettings();
+            contextMenuManager.ApplyCustomIcons(source, frames, GetSystemTheme(), manualTheme);
             foreach (var frame in frames) frame.Dispose();
-        }
-
-        private void RevertToBuiltInRunner()
-        {
-            customRunnerName = null;
-            UserSettings.Default.CustomRunnerName = string.Empty;
-            UserSettings.Default.Save();
-            contextMenuManager.SetIcons(GetSystemTheme(), manualTheme, runner);
         }
 
         private void HandleCustomRunnerDeleted(string deletedName)
         {
-            if (!string.Equals(customRunnerName, deletedName, StringComparison.OrdinalIgnoreCase)) return;
-            RevertToBuiltInRunner();
+            foreach (var config in indicatorConfigs.Values)
+            {
+                if (!string.Equals(config.CustomRunnerName, deletedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                config.CustomRunnerName = null;
+                SaveIndicatorSettings();
+                if (config.Enabled)
+                {
+                    contextMenuManager.ApplyBuiltInIcons(
+                        config.SpeedSource,
+                        GetSystemTheme(),
+                        manualTheme,
+                        config.Runner
+                    );
+                }
+            }
         }
 
         private void ChangeManualTheme(Theme t)
@@ -265,13 +388,6 @@ namespace RunCat365
             UserSettings.Default.Save();
         }
 
-        private void ChangeSpeedSource(SpeedSource s)
-        {
-            speedSource = s;
-            UserSettings.Default.SpeedSource = speedSource.ToString();
-            UserSettings.Default.Save();
-        }
-
         private void ChangeFPSMaxLimit(FPSMaxLimit f)
         {
             fpsMaxLimit = f;
@@ -279,12 +395,13 @@ namespace RunCat365
             UserSettings.Default.Save();
         }
 
-        private void AnimationTick(object? sender, EventArgs e)
-        {
-            contextMenuManager.AdvanceFrame();
-        }
-
-        private string GetInfoDescription(CPUInfo cpuInfo, GPUInfo? gpuInfo, MemoryInfo memoryInfo, TemperatureInfo? temperatureInfo)
+        private string GetIndicatorDescription(
+            SpeedSource speedSource,
+            CPUInfo cpuInfo,
+            GPUInfo? gpuInfo,
+            MemoryInfo memoryInfo,
+            TemperatureInfo? temperatureInfo
+        )
         {
             var baseDescription = speedSource switch
             {
@@ -295,23 +412,29 @@ namespace RunCat365
             };
 
             var temperatureDescription = temperatureInfo?.GetDescription(temperatureUnit) ?? "";
-            return string.IsNullOrEmpty(temperatureDescription) ? baseDescription : $"{baseDescription}\n{temperatureDescription}";
+            return string.IsNullOrEmpty(temperatureDescription)
+                ? baseDescription
+                : $"{baseDescription}\n{temperatureDescription}";
         }
 
-        private int CalculateInterval(CPUInfo cpuInfo, GPUInfo? gpuInfo, MemoryInfo memoryInfo)
+        private static float GetLoad(SpeedSource speedSource, CPUInfo cpuInfo, GPUInfo? gpuInfo, MemoryInfo memoryInfo)
         {
-            var load = speedSource switch
+            return speedSource switch
             {
                 SpeedSource.CPU => cpuInfo.Total,
                 SpeedSource.GPU => gpuInfo?.Maximum ?? 0f,
                 SpeedSource.Memory => memoryInfo.MemoryLoad,
                 _ => 0f,
             };
+        }
+
+        private int CalculateInterval(float load)
+        {
             var speed = (float)Math.Max(1.0f, (load / 5.0f) * fpsMaxLimit.GetRate());
             return (int)(500.0f / speed);
         }
 
-        private int FetchSystemInfo()
+        private void FetchSystemInfo()
         {
             var cpuInfo = cpuRepository.Get();
             var gpuInfo = gpuRepository.Get();
@@ -320,7 +443,22 @@ namespace RunCat365
             var storageInfo = storageRepository.Get();
             var networkInfo = networkRepository.Get();
 
-            contextMenuManager.SetNotifyIconText(GetInfoDescription(cpuInfo, gpuInfo, memoryInfo, temperatureInfo));
+            foreach (var config in indicatorConfigs.Values)
+            {
+                if (!config.Enabled || !IsSpeedSourceAvailable(config.SpeedSource)) continue;
+
+                var description = GetIndicatorDescription(
+                    config.SpeedSource,
+                    cpuInfo,
+                    gpuInfo,
+                    memoryInfo,
+                    temperatureInfo
+                );
+                contextMenuManager.SetIndicatorText(config.SpeedSource, description);
+
+                var load = GetLoad(config.SpeedSource, cpuInfo, gpuInfo, memoryInfo);
+                contextMenuManager.SetIndicatorInterval(config.SpeedSource, CalculateInterval(load));
+            }
 
             var systemInfoValues = new List<string>();
             systemInfoValues.AddRange(cpuInfo.GenerateIndicator());
@@ -339,8 +477,6 @@ namespace RunCat365
                 systemInfoValues.AddRange(networkInfo.Value.GenerateIndicator());
             }
             contextMenuManager.SetSystemInfoMenuText(string.Join("\n", [.. systemInfoValues]));
-
-            return CalculateInterval(cpuInfo, gpuInfo, memoryInfo);
         }
 
         private async void FetchTick(object? sender, EventArgs e)
@@ -365,10 +501,7 @@ namespace RunCat365
 
                 if (!doHeavySlice) return;
 
-                var interval = FetchSystemInfo();
-                animateTimer.Stop();
-                animateTimer.Interval = interval;
-                animateTimer.Start();
+                FetchSystemInfo();
             }
             catch (Exception exception)
             {
@@ -386,8 +519,6 @@ namespace RunCat365
             {
                 SystemEvents.UserPreferenceChanged -= UserPreferenceChanged;
 
-                animateTimer?.Stop();
-                animateTimer?.Dispose();
                 fetchTimer?.Stop();
                 fetchTimer?.Dispose();
 
@@ -395,7 +526,7 @@ namespace RunCat365
                 gpuRepository?.Close();
                 temperatureRepository?.Close();
 
-                contextMenuManager?.HideNotifyIcon();
+                contextMenuManager?.HideNotifyIcons();
                 contextMenuManager?.Dispose();
             }
             base.Dispose(disposing);

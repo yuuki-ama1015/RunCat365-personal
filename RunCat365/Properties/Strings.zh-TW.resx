@@ -297,4 +297,10 @@
   <data name="CustomRunner_PreviewSpeed" xml:space="preserve">
     <value>預覽速度:</value>
   </data>
+  <data name="Menu_Indicators" xml:space="preserve">
+    <value>指示器</value>
+  </data>
+  <data name="Menu_IndicatorEnabled" xml:space="preserve">
+    <value>啟用</value>
+  </data>
 </root>

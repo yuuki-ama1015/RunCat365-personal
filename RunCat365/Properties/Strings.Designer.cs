@@ -518,5 +518,23 @@ namespace RunCat365.Properties {
                 return ResourceManager.GetString("TemperatureUnit_Fahrenheit", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Indicators.
+        /// </summary>
+        internal static string Menu_Indicators {
+            get {
+                return ResourceManager.GetString("Menu_Indicators", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Enabled.
+        /// </summary>
+        internal static string Menu_IndicatorEnabled {
+            get {
+                return ResourceManager.GetString("Menu_IndicatorEnabled", resourceCulture);
+            }
+        }
     }
 }

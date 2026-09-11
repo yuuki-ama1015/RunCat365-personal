@@ -297,4 +297,10 @@
   <data name="CustomRunner_PreviewSpeed" xml:space="preserve">
     <value>Vitesse d'aperçu :</value>
   </data>
+  <data name="Menu_Indicators" xml:space="preserve">
+    <value>Indicateurs</value>
+  </data>
+  <data name="Menu_IndicatorEnabled" xml:space="preserve">
+    <value>Activé</value>
+  </data>
 </root>

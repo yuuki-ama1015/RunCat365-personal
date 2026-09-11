@@ -118,5 +118,125 @@ namespace RunCat365.Properties {
                 this["CustomRunnerName"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool CpuIndicatorEnabled {
+            get {
+                return ((bool)(this["CpuIndicatorEnabled"]));
+            }
+            set {
+                this["CpuIndicatorEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Cat")]
+        public string CpuRunner {
+            get {
+                return ((string)(this["CpuRunner"]));
+            }
+            set {
+                this["CpuRunner"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string CpuCustomRunnerName {
+            get {
+                return ((string)(this["CpuCustomRunnerName"]));
+            }
+            set {
+                this["CpuCustomRunnerName"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool GpuIndicatorEnabled {
+            get {
+                return ((bool)(this["GpuIndicatorEnabled"]));
+            }
+            set {
+                this["GpuIndicatorEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Parrot")]
+        public string GpuRunner {
+            get {
+                return ((string)(this["GpuRunner"]));
+            }
+            set {
+                this["GpuRunner"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string GpuCustomRunnerName {
+            get {
+                return ((string)(this["GpuCustomRunnerName"]));
+            }
+            set {
+                this["GpuCustomRunnerName"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MemoryIndicatorEnabled {
+            get {
+                return ((bool)(this["MemoryIndicatorEnabled"]));
+            }
+            set {
+                this["MemoryIndicatorEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Horse")]
+        public string MemoryRunner {
+            get {
+                return ((string)(this["MemoryRunner"]));
+            }
+            set {
+                this["MemoryRunner"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string MemoryCustomRunnerName {
+            get {
+                return ((string)(this["MemoryCustomRunnerName"]));
+            }
+            set {
+                this["MemoryCustomRunnerName"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool IndicatorsMigrated {
+            get {
+                return ((bool)(this["IndicatorsMigrated"]));
+            }
+            set {
+                this["IndicatorsMigrated"] = value;
+            }
+        }
     }
 }

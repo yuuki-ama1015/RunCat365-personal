@@ -26,5 +26,35 @@
     <Setting Name="CustomRunnerName" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="CpuIndicatorEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="CpuRunner" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Cat</Value>
+    </Setting>
+    <Setting Name="CpuCustomRunnerName" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="GpuIndicatorEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="GpuRunner" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Parrot</Value>
+    </Setting>
+    <Setting Name="GpuCustomRunnerName" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="MemoryIndicatorEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="MemoryRunner" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Horse</Value>
+    </Setting>
+    <Setting Name="MemoryCustomRunnerName" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="IndicatorsMigrated" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

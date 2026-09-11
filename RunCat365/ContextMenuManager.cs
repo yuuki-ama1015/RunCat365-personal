@@ -20,26 +20,21 @@ namespace RunCat365
     internal class ContextMenuManager : IDisposable
     {
         private readonly CustomToolStripMenuItem systemInfoMenu = new();
-        private readonly NotifyIcon notifyIcon = new();
-        private readonly List<Icon> icons = [];
-        private readonly Lock iconLock = new();
-        private int current = 0;
+        private readonly Dictionary<SpeedSource, TrayIndicator> indicators = [];
+        private readonly ContextMenuStrip contextMenuStrip;
         private EndlessGameForm? endlessGameForm;
         private CustomRunnerForm? customRunnerForm;
-        private List<Bitmap>? customRunnerSourceFrames;
 
         internal ContextMenuManager(
-            Func<Runner> getRunner,
-            Action<Runner> setRunner,
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
+            Action<SpeedSource, bool> setIndicatorEnabled,
+            Action<SpeedSource, Runner> setIndicatorRunner,
             CustomRunnerRepository customRunnerRepository,
-            Func<string?> getCustomRunnerName,
-            Action<string> applyCustomRunner,
+            Action<SpeedSource, string> applyCustomRunner,
             Action<string> onCustomRunnerDeleted,
             Func<Theme> getSystemTheme,
             Func<Theme> getManualTheme,
             Action<Theme> setManualTheme,
-            Func<SpeedSource> getSpeedSource,
-            Action<SpeedSource> setSpeedSource,
             Func<SpeedSource, bool> isSpeedSourceAvailable,
             Func<FPSMaxLimit> getFPSMaxLimit,
             Action<FPSMaxLimit> setFPSMaxLimit,
@@ -54,29 +49,15 @@ namespace RunCat365
             systemInfoMenu.Text = "-\n-\n-\n-\n-";
             systemInfoMenu.Enabled = false;
 
-            var runnersMenu = new CustomToolStripMenuItem(Strings.Menu_Runner);
-            runnersMenu.SetupSubMenusFromEnum<Runner>(
-                r => r.GetLocalizedString(),
-                (parent, sender, e) =>
-                {
-                    HandleMenuItemSelection<Runner>(
-                        parent,
-                        sender,
-                        (string? s, out Runner r) => Enum.TryParse(s, out r),
-                        r => setRunner(r)
-                    );
-                    SetIcons(getSystemTheme(), getManualTheme(), getRunner());
-                },
-                r => getCustomRunnerName() is null && getRunner() == r,
-                r => GetRunnerThumbnailBitmap(getSystemTheme(), r)
-            );
-            runnersMenu.DropDownOpening += (sender, e) => RefreshCustomRunnerMenu(
-                runnersMenu,
+            var indicatorsMenu = BuildIndicatorsMenu(
+                getConfigs,
+                setIndicatorEnabled,
+                setIndicatorRunner,
                 customRunnerRepository,
-                ResolveTheme(getSystemTheme(), getManualTheme()),
-                getRunner,
-                getCustomRunnerName,
-                applyCustomRunner
+                applyCustomRunner,
+                getSystemTheme,
+                getManualTheme,
+                isSpeedSourceAvailable
             );
 
             var themeMenu = new CustomToolStripMenuItem(Strings.Menu_Theme);
@@ -90,27 +71,10 @@ namespace RunCat365
                         (string? s, out Theme t) => Enum.TryParse(s, out t),
                         t => setManualTheme(t)
                     );
-                    SetIcons(getSystemTheme(), getManualTheme(), getRunner());
+                    RefreshAllIndicatorIcons(getConfigs, getSystemTheme, getManualTheme, customRunnerRepository);
                 },
                 t => getManualTheme() == t,
                 _ => null
-            );
-
-            var speedSourceMenu = new CustomToolStripMenuItem(Strings.Menu_SpeedSource);
-            speedSourceMenu.SetupSubMenusFromEnum<SpeedSource>(
-                s => s.GetLocalizedString(),
-                (parent, sender, e) =>
-                {
-                    HandleMenuItemSelection<SpeedSource>(
-                        parent,
-                        sender,
-                        (string? s, out SpeedSource ss) => Enum.TryParse(s, out ss),
-                        s => setSpeedSource(s)
-                    );
-                },
-                s => getSpeedSource() == s,
-                _ => null,
-                isSpeedSourceAvailable
             );
 
             var fpsMaxLimitMenu = new CustomToolStripMenuItem(Strings.Menu_FPSMaxLimit);
@@ -154,7 +118,7 @@ namespace RunCat365
             var settingsMenu = new CustomToolStripMenuItem(Strings.Menu_Settings);
             settingsMenu.DropDownItems.AddRange(
                 themeMenu,
-                speedSourceMenu,
+                indicatorsMenu,
                 fpsMaxLimitMenu,
                 temperatureUnitMenu,
                 launchAtStartupMenu
@@ -187,11 +151,10 @@ namespace RunCat365
             var exitMenu = new CustomToolStripMenuItem(Strings.Menu_Exit);
             exitMenu.Click += (sender, e) => onExit();
 
-            var contextMenuStrip = new ContextMenuStrip(new Container());
+            contextMenuStrip = new ContextMenuStrip(new Container());
             contextMenuStrip.Items.AddRange(
                 systemInfoMenu,
                 new ToolStripSeparator(),
-                runnersMenu,
                 customRunnersMenu,
                 new ToolStripSeparator(),
                 settingsMenu,
@@ -202,10 +165,213 @@ namespace RunCat365
             );
             contextMenuStrip.Renderer = new ContextMenuRenderer();
 
-            SetIcons(getSystemTheme(), getManualTheme(), getRunner());
+            foreach (SpeedSource speedSource in Enum.GetValues<SpeedSource>())
+            {
+                if (!isSpeedSourceAvailable(speedSource) && speedSource == SpeedSource.GPU)
+                {
+                    // Still create a tray indicator so settings can fall back cleanly,
+                    // but it stays hidden unless GPU becomes available and enabled.
+                }
+                var indicator = new TrayIndicator(speedSource, contextMenuStrip);
+                indicators[speedSource] = indicator;
+            }
 
-            notifyIcon.Visible = true;
-            notifyIcon.ContextMenuStrip = contextMenuStrip;
+            SyncFromConfigs(getConfigs, getSystemTheme, getManualTheme, customRunnerRepository, isSpeedSourceAvailable);
+        }
+
+        private CustomToolStripMenuItem BuildIndicatorsMenu(
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
+            Action<SpeedSource, bool> setIndicatorEnabled,
+            Action<SpeedSource, Runner> setIndicatorRunner,
+            CustomRunnerRepository customRunnerRepository,
+            Action<SpeedSource, string> applyCustomRunner,
+            Func<Theme> getSystemTheme,
+            Func<Theme> getManualTheme,
+            Func<SpeedSource, bool> isSpeedSourceAvailable
+        )
+        {
+            var indicatorsMenu = new CustomToolStripMenuItem(Strings.Menu_Indicators);
+
+            foreach (SpeedSource speedSource in Enum.GetValues<SpeedSource>())
+            {
+                if (!isSpeedSourceAvailable(speedSource)) continue;
+
+                var metricMenu = new CustomToolStripMenuItem(speedSource.GetLocalizedString())
+                {
+                    Tag = speedSource
+                };
+
+                var enabledMenu = new CustomToolStripMenuItem(Strings.Menu_IndicatorEnabled)
+                {
+                    Tag = speedSource,
+                    Checked = getConfigs().TryGetValue(speedSource, out var cfg) && cfg.Enabled
+                };
+                enabledMenu.Click += (sender, e) =>
+                {
+                    if (sender is not ToolStripMenuItem item) return;
+                    if (item.Tag is not SpeedSource source) return;
+                    var nextEnabled = !item.Checked;
+                    setIndicatorEnabled(source, nextEnabled);
+                    // Re-read after Program enforces "at least one" rule.
+                    var configs = getConfigs();
+                    item.Checked = configs.TryGetValue(source, out var updated) && updated.Enabled;
+                    SyncFromConfigs(getConfigs, getSystemTheme, getManualTheme, customRunnerRepository, isSpeedSourceAvailable);
+                    RefreshEnabledCheckStates(indicatorsMenu, getConfigs);
+                };
+
+                var runnersMenu = new CustomToolStripMenuItem(Strings.Menu_Runner)
+                {
+                    Tag = speedSource
+                };
+                runnersMenu.SetupSubMenusFromEnum<Runner>(
+                    r => r.GetLocalizedString(),
+                    (parent, sender, e) =>
+                    {
+                        HandleMenuItemSelection<Runner>(
+                            parent,
+                            sender,
+                            (string? s, out Runner r) => Enum.TryParse(s, out r),
+                            r =>
+                            {
+                                setIndicatorRunner(speedSource, r);
+                                ApplyRunnerToIndicator(speedSource, getConfigs, getSystemTheme, getManualTheme, customRunnerRepository);
+                            }
+                        );
+                    },
+                    r =>
+                    {
+                        if (!getConfigs().TryGetValue(speedSource, out var config)) return false;
+                        return config.CustomRunnerName is null && config.Runner == r;
+                    },
+                    r => GetRunnerThumbnailBitmap(getSystemTheme(), r)
+                );
+                runnersMenu.DropDownOpening += (sender, e) => RefreshCustomRunnerMenu(
+                    runnersMenu,
+                    speedSource,
+                    customRunnerRepository,
+                    ResolveTheme(getSystemTheme(), getManualTheme()),
+                    getConfigs,
+                    applyCustomRunner
+                );
+
+                metricMenu.DropDownItems.AddRange(enabledMenu, runnersMenu);
+                indicatorsMenu.DropDownItems.Add(metricMenu);
+            }
+
+            indicatorsMenu.DropDownOpening += (sender, e) => RefreshEnabledCheckStates(indicatorsMenu, getConfigs);
+            return indicatorsMenu;
+        }
+
+        private static void RefreshEnabledCheckStates(
+            CustomToolStripMenuItem indicatorsMenu,
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs
+        )
+        {
+            var configs = getConfigs();
+            foreach (ToolStripItem item in indicatorsMenu.DropDownItems)
+            {
+                if (item is not ToolStripMenuItem metricMenu) continue;
+                if (metricMenu.Tag is not SpeedSource speedSource) continue;
+                if (metricMenu.DropDownItems.Count > 0
+                    && metricMenu.DropDownItems[0] is ToolStripMenuItem enabledItem)
+                {
+                    enabledItem.Checked = configs.TryGetValue(speedSource, out var config) && config.Enabled;
+                }
+            }
+        }
+
+        private void SyncFromConfigs(
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
+            Func<Theme> getSystemTheme,
+            Func<Theme> getManualTheme,
+            CustomRunnerRepository customRunnerRepository,
+            Func<SpeedSource, bool> isSpeedSourceAvailable
+        )
+        {
+            var configs = getConfigs();
+            foreach (var (speedSource, indicator) in indicators)
+            {
+                if (!isSpeedSourceAvailable(speedSource)
+                    || !configs.TryGetValue(speedSource, out var config)
+                    || !config.Enabled)
+                {
+                    indicator.Visible = false;
+                    continue;
+                }
+
+                ApplyRunnerToIndicator(speedSource, getConfigs, getSystemTheme, getManualTheme, customRunnerRepository);
+                indicator.Visible = true;
+            }
+        }
+
+        private void ApplyRunnerToIndicator(
+            SpeedSource speedSource,
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
+            Func<Theme> getSystemTheme,
+            Func<Theme> getManualTheme,
+            CustomRunnerRepository customRunnerRepository
+        )
+        {
+            if (!indicators.TryGetValue(speedSource, out var indicator)) return;
+            if (!getConfigs().TryGetValue(speedSource, out var config)) return;
+
+            if (!string.IsNullOrEmpty(config.CustomRunnerName))
+            {
+                var frames = customRunnerRepository.LoadFrames(config.CustomRunnerName);
+                if (frames.Count > 0)
+                {
+                    indicator.SetCustomIcons(frames, getSystemTheme(), getManualTheme());
+                    foreach (var frame in frames) frame.Dispose();
+                    return;
+                }
+            }
+
+            indicator.SetIcons(getSystemTheme(), getManualTheme(), config.Runner);
+        }
+
+        private void RefreshAllIndicatorIcons(
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
+            Func<Theme> getSystemTheme,
+            Func<Theme> getManualTheme,
+            CustomRunnerRepository customRunnerRepository
+        )
+        {
+            foreach (var speedSource in indicators.Keys)
+            {
+                if (!getConfigs().TryGetValue(speedSource, out var config) || !config.Enabled) continue;
+                ApplyRunnerToIndicator(speedSource, getConfigs, getSystemTheme, getManualTheme, customRunnerRepository);
+            }
+        }
+
+        internal void RefreshThemeIcons(
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
+            Theme systemTheme,
+            Theme manualTheme,
+            CustomRunnerRepository customRunnerRepository
+        )
+        {
+            foreach (var (speedSource, indicator) in indicators)
+            {
+                if (!getConfigs().TryGetValue(speedSource, out var config) || !config.Enabled) continue;
+                if (indicator.HasActiveCustomIcons)
+                {
+                    indicator.RecolorActiveCustomIcons(systemTheme, manualTheme);
+                }
+                else if (!string.IsNullOrEmpty(config.CustomRunnerName))
+                {
+                    ApplyRunnerToIndicator(
+                        speedSource,
+                        getConfigs,
+                        () => systemTheme,
+                        () => manualTheme,
+                        customRunnerRepository
+                    );
+                }
+                else
+                {
+                    indicator.SetIcons(systemTheme, manualTheme, config.Runner);
+                }
+            }
         }
 
         private static void HandleMenuItemSelection<T>(
@@ -247,18 +413,22 @@ namespace RunCat365
 
         private static void RefreshCustomRunnerMenu(
             CustomToolStripMenuItem runnersMenu,
+            SpeedSource speedSource,
             CustomRunnerRepository customRunnerRepository,
             Theme theme,
-            Func<Runner> getRunner,
-            Func<string?> getCustomRunnerName,
-            Action<string> applyCustomRunner
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
+            Action<SpeedSource, string> applyCustomRunner
         )
         {
+            IndicatorConfig? config = getConfigs().TryGetValue(speedSource, out var c) ? c : null;
+
             foreach (ToolStripItem item in runnersMenu.DropDownItems)
             {
                 if (item is ToolStripMenuItem menuItem && item.Tag is Runner runner)
                 {
-                    menuItem.Checked = getCustomRunnerName() is null && getRunner() == runner;
+                    menuItem.Checked = config is not null
+                        && config.CustomRunnerName is null
+                        && config.Runner == runner;
                 }
             }
 
@@ -286,10 +456,26 @@ namespace RunCat365
                 var item = new CustomToolStripMenuItem(name)
                 {
                     Tag = new CustomRunnerMenuTag(name),
-                    Checked = string.Equals(getCustomRunnerName(), name, StringComparison.OrdinalIgnoreCase),
+                    Checked = config is not null
+                        && string.Equals(config.CustomRunnerName, name, StringComparison.OrdinalIgnoreCase),
                     Image = CreateCustomRunnerThumbnail(customRunnerRepository, name, theme)
                 };
-                item.Click += (sender, e) => applyCustomRunner(name);
+                item.Click += (sender, e) =>
+                {
+                    applyCustomRunner(speedSource, name);
+                    // Clear built-in checks; DropDownOpening will refresh next time.
+                    foreach (ToolStripItem child in runnersMenu.DropDownItems)
+                    {
+                        if (child is ToolStripMenuItem mi)
+                        {
+                            if (child.Tag is Runner) mi.Checked = false;
+                            if (child.Tag is CustomRunnerMenuTag tag)
+                            {
+                                mi.Checked = string.Equals(tag.Name, name, StringComparison.OrdinalIgnoreCase);
+                            }
+                        }
+                    }
+                };
                 runnersMenu.DropDownItems.Add(item);
             }
         }
@@ -303,81 +489,6 @@ namespace RunCat365
             {
                 return firstFrame.Recolor(theme.GetContrastColor());
             }
-        }
-
-        internal void SetIcons(Theme systemTheme, Theme manualTheme, Runner runner)
-        {
-            ClearCustomRunnerSourceFrames();
-
-            var runnerName = runner.GetString();
-            var rm = Resources.ResourceManager;
-            var capacity = runner.GetFrameNumber();
-            var bitmaps = new List<Bitmap>(capacity);
-            for (int i = 0; i < capacity; i++)
-            {
-                var iconName = $"{runnerName}_{i}".ToLower();
-                if (rm.GetObject(iconName) is Bitmap bitmap)
-                {
-                    bitmaps.Add(bitmap);
-                }
-            }
-            ReplaceIconList(bitmaps, ResolveTheme(systemTheme, manualTheme));
-        }
-
-        internal void SetCustomIcons(List<Bitmap> frames, Theme systemTheme, Theme manualTheme)
-        {
-            ClearCustomRunnerSourceFrames();
-            customRunnerSourceFrames = frames.Select(f => new Bitmap(f)).ToList();
-            ReplaceIconList(customRunnerSourceFrames, ResolveTheme(systemTheme, manualTheme));
-        }
-
-        internal void RecolorActiveCustomIcons(Theme systemTheme, Theme manualTheme)
-        {
-            if (customRunnerSourceFrames is null) return;
-            ReplaceIconList(customRunnerSourceFrames, ResolveTheme(systemTheme, manualTheme));
-        }
-
-        internal bool HasActiveCustomIcons => customRunnerSourceFrames is not null;
-
-        private void ReplaceIconList(IList<Bitmap> frames, Theme theme)
-        {
-            var color = theme.GetContrastColor();
-            var list = new List<Icon>(frames.Count);
-            foreach (var frame in frames)
-            {
-                if (theme == Theme.Light)
-                {
-                    list.Add(frame.ToIcon());
-                }
-                else
-                {
-                    using var recolored = frame.Recolor(color);
-                    list.Add(recolored.ToIcon());
-                }
-            }
-
-            List<Icon> oldIcons;
-            lock (iconLock)
-            {
-                oldIcons = new List<Icon>(icons);
-                icons.Clear();
-                icons.AddRange(list);
-                current = 0;
-                if (icons.Count > 0)
-                {
-                    notifyIcon.Icon = icons[0];
-                    current = 1 % icons.Count;
-                }
-            }
-
-            foreach (var icon in oldIcons) icon.Dispose();
-        }
-
-        private void ClearCustomRunnerSourceFrames()
-        {
-            if (customRunnerSourceFrames is null) return;
-            foreach (var bitmap in customRunnerSourceFrames) bitmap.Dispose();
-            customRunnerSourceFrames = null;
         }
 
         private static Theme ResolveTheme(Theme systemTheme, Theme manualTheme)
@@ -400,7 +511,6 @@ namespace RunCat365
             {
                 MessageBox.Show(ex.Message, Strings.Message_Warning, MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
-
         }
 
         private void ShowOrActivateGameWindow(Func<Theme> getSystemTheme)
@@ -443,18 +553,9 @@ namespace RunCat365
         internal void ShowBalloonTip(BalloonTipType balloonTipType)
         {
             var info = balloonTipType.GetInfo();
-            notifyIcon.ShowBalloonTip(5000, info.Title, info.Text, info.Icon);
-        }
-
-        internal void AdvanceFrame()
-        {
-            lock (iconLock)
-            {
-                if (icons.Count == 0) return;
-                if (icons.Count <= current) current = 0;
-                notifyIcon.Icon = icons[current];
-                current = (current + 1) % icons.Count;
-            }
+            var target = indicators.Values.FirstOrDefault(i => i.Visible)
+                ?? indicators.Values.FirstOrDefault();
+            target?.ShowBalloonTip(5000, info.Title, info.Text, info.Icon);
         }
 
         internal void SetSystemInfoMenuText(string text)
@@ -462,14 +563,58 @@ namespace RunCat365
             systemInfoMenu.Text = text;
         }
 
-        internal void SetNotifyIconText(string text)
+        internal void SetIndicatorText(SpeedSource speedSource, string text)
         {
-            notifyIcon.Text = text;
+            if (indicators.TryGetValue(speedSource, out var indicator))
+            {
+                indicator.SetText(text);
+            }
         }
 
-        internal void HideNotifyIcon()
+        internal void SetIndicatorInterval(SpeedSource speedSource, int interval)
         {
-            notifyIcon.Visible = false;
+            if (indicators.TryGetValue(speedSource, out var indicator))
+            {
+                indicator.SetInterval(interval);
+            }
+        }
+
+        internal void ApplyCustomIcons(
+            SpeedSource speedSource,
+            List<Bitmap> frames,
+            Theme systemTheme,
+            Theme manualTheme
+        )
+        {
+            if (!indicators.TryGetValue(speedSource, out var indicator)) return;
+            indicator.SetCustomIcons(frames, systemTheme, manualTheme);
+        }
+
+        internal void ApplyBuiltInIcons(
+            SpeedSource speedSource,
+            Theme systemTheme,
+            Theme manualTheme,
+            Runner runner
+        )
+        {
+            if (!indicators.TryGetValue(speedSource, out var indicator)) return;
+            indicator.SetIcons(systemTheme, manualTheme, runner);
+        }
+
+        internal void SetIndicatorVisible(SpeedSource speedSource, bool visible)
+        {
+            if (indicators.TryGetValue(speedSource, out var indicator))
+            {
+                indicator.Visible = visible;
+            }
+        }
+
+        internal void HideNotifyIcons()
+        {
+            foreach (var indicator in indicators.Values)
+            {
+                indicator.Visible = false;
+            }
         }
 
         public void Dispose()
@@ -482,20 +627,13 @@ namespace RunCat365
         {
             if (disposing)
             {
-                lock (iconLock)
+                foreach (var indicator in indicators.Values)
                 {
-                    foreach (var icon in icons) icon.Dispose();
-                    icons.Clear();
+                    indicator.Dispose();
                 }
+                indicators.Clear();
 
-                ClearCustomRunnerSourceFrames();
-
-                if (notifyIcon is not null)
-                {
-                    notifyIcon.ContextMenuStrip?.Dispose();
-                    notifyIcon.Dispose();
-                }
-
+                contextMenuStrip?.Dispose();
                 endlessGameForm?.Dispose();
                 customRunnerForm?.Dispose();
             }

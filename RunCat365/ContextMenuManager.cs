@@ -27,6 +27,9 @@ namespace RunCat365
         private SettingsForm? settingsForm;
         private readonly Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs;
         private readonly Action<SpeedSource, bool> setIndicatorEnabled;
+        private readonly Action<SpeedSource, Runner> setIndicatorRunner;
+        private readonly Action<SpeedSource, string> applyCustomRunner;
+        private readonly CustomRunnerRepository customRunnerRepository;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
 
         internal ContextMenuManager(
@@ -52,6 +55,9 @@ namespace RunCat365
         {
             this.getConfigs = getConfigs;
             this.setIndicatorEnabled = setIndicatorEnabled;
+            this.setIndicatorRunner = setIndicatorRunner;
+            this.applyCustomRunner = applyCustomRunner;
+            this.customRunnerRepository = customRunnerRepository;
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
 
             systemInfoMenu.Text = "-\n-\n-\n-\n-";
@@ -245,6 +251,7 @@ namespace RunCat365
                             {
                                 setIndicatorRunner(speedSource, r);
                                 ApplyRunnerToIndicator(speedSource, getConfigs, getSystemTheme, getManualTheme, customRunnerRepository);
+                                settingsForm?.NotifyIndicatorsChanged();
                             }
                         );
                     },
@@ -421,7 +428,7 @@ namespace RunCat365
             return systemTheme == Theme.Light ? bitmap : bitmap.Recolor(color);
         }
 
-        private static void RefreshCustomRunnerMenu(
+        private void RefreshCustomRunnerMenu(
             CustomToolStripMenuItem runnersMenu,
             SpeedSource speedSource,
             CustomRunnerRepository customRunnerRepository,
@@ -485,6 +492,7 @@ namespace RunCat365
                             }
                         }
                     }
+                    settingsForm?.NotifyIndicatorsChanged();
                 };
                 runnersMenu.DropDownItems.Add(item);
             }
@@ -564,7 +572,14 @@ namespace RunCat365
         {
             if (settingsForm is null)
             {
-                settingsForm = new SettingsForm(getConfigs, setIndicatorEnabled, isSpeedSourceAvailable);
+                settingsForm = new SettingsForm(
+                    getConfigs,
+                    setIndicatorEnabled,
+                    setIndicatorRunner,
+                    applyCustomRunner,
+                    isSpeedSourceAvailable,
+                    customRunnerRepository
+                );
                 settingsForm.FormClosed += (sender, e) =>
                 {
                     settingsForm = null;

@@ -326,6 +326,19 @@ a {
   font-weight: 650;
 }
 
+.mode-chip:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.mode-chip-muted,
+.mode-chip.mode-chip-muted:disabled {
+  opacity: 0.55;
+  background: #f3f6f6;
+  color: var(--on-surface-variant);
+  border-style: dashed;
+}
+
 .hint {
   margin-top: 10px;
   color: var(--on-surface-variant);

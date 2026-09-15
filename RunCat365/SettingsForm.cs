@@ -24,7 +24,10 @@ namespace RunCat365
         private const string VirtualHostName = "runcat.settings";
         private readonly Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs;
         private readonly Action<SpeedSource, bool> setIndicatorEnabled;
+        private readonly Action<SpeedSource, Runner> setIndicatorRunner;
+        private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
+        private readonly CustomRunnerRepository customRunnerRepository;
         private readonly WebView2 webView = new();
         private bool isInitialized;
         private bool isWebViewReady;
@@ -32,12 +35,18 @@ namespace RunCat365
         internal SettingsForm(
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
             Action<SpeedSource, bool> setIndicatorEnabled,
-            Func<SpeedSource, bool> isSpeedSourceAvailable
+            Action<SpeedSource, Runner> setIndicatorRunner,
+            Action<SpeedSource, string> applyCustomRunner,
+            Func<SpeedSource, bool> isSpeedSourceAvailable,
+            CustomRunnerRepository customRunnerRepository
         )
         {
             this.getConfigs = getConfigs;
             this.setIndicatorEnabled = setIndicatorEnabled;
+            this.setIndicatorRunner = setIndicatorRunner;
+            this.applyCustomRunner = applyCustomRunner;
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
+            this.customRunnerRepository = customRunnerRepository;
 
             Text = Strings.Window_Settings;
             Icon = Resources.AppIcon;
@@ -141,6 +150,32 @@ namespace RunCat365
 
                     setIndicatorEnabled(speedSource, enabledElement.GetBoolean());
                     PostIndicatorsState();
+                    return;
+                }
+
+                if (type == "setRunner")
+                {
+                    if (!root.TryGetProperty("id", out var idElement)) return;
+                    if (!root.TryGetProperty("runner", out var runnerElement)) return;
+                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+                    if (!Enum.TryParse(runnerElement.GetString(), ignoreCase: true, out Runner runner)) return;
+
+                    setIndicatorRunner(speedSource, runner);
+                    PostIndicatorsState();
+                    return;
+                }
+
+                if (type == "setCustomRunner")
+                {
+                    if (!root.TryGetProperty("id", out var idElement)) return;
+                    if (!root.TryGetProperty("name", out var nameElement)) return;
+                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+
+                    var name = nameElement.GetString();
+                    if (string.IsNullOrWhiteSpace(name)) return;
+
+                    applyCustomRunner(speedSource, name);
+                    PostIndicatorsState();
                 }
             }
             catch (JsonException)
@@ -173,24 +208,56 @@ namespace RunCat365
             try
             {
                 var configs = getConfigs();
+                var customProfiles = customRunnerRepository.GetAll();
+                var customNames = new HashSet<string>(
+                    customProfiles.Select(p => p.Name),
+                    StringComparer.OrdinalIgnoreCase
+                );
+
                 var items = Enum.GetValues<SpeedSource>()
                     .Select(speedSource =>
                     {
-                        var enabled = configs.TryGetValue(speedSource, out var config) && config.Enabled;
+                        configs.TryGetValue(speedSource, out var config);
+                        var enabled = config is not null && config.Enabled;
                         var available = isSpeedSourceAvailable(speedSource);
+                        var runner = config?.Runner.GetString() ?? Runner.Cat.GetString();
+                        string? customRunnerName = null;
+                        if (config is not null
+                            && !string.IsNullOrEmpty(config.CustomRunnerName)
+                            && customNames.Contains(config.CustomRunnerName))
+                        {
+                            customRunnerName = config.CustomRunnerName;
+                        }
+
                         return new
                         {
                             id = ToIndicatorId(speedSource),
                             enabled,
-                            available
+                            available,
+                            runner,
+                            customRunnerName
                         };
                     })
+                    .ToArray();
+
+                var builtin = Enum.GetValues<Runner>()
+                    .Select(runner => new
+                    {
+                        id = runner.GetString(),
+                        label = runner.GetLocalizedString()
+                    })
+                    .ToArray();
+
+                var custom = customProfiles
+                    .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(p => new { name = p.Name })
                     .ToArray();
 
                 var payload = JsonSerializer.Serialize(new
                 {
                     type = "indicators",
-                    items
+                    items,
+                    runners = new { builtin, custom }
                 });
                 webView.CoreWebView2.PostWebMessageAsJson(payload);
             }

@@ -14,7 +14,7 @@
   /** @type {Record<string, { id: string, enabled: boolean, available: boolean, runner: string, customRunnerName: string|null }>} */
   let indicatorState = {};
 
-  /** @type {{ builtin: Array<{ id: string, label: string }>, custom: Array<{ name: string }> }} */
+  /** @type {{ builtin: Array<{ id: string, label: string }>, custom: Array<{ name: string, frameCount?: number }> }} */
   let runnersCatalog = {
     builtin: [
       { id: "Cat", label: "Cat" },
@@ -321,34 +321,120 @@
     postHost({ type: "getIndicators" });
   }
 
-  function renderAssets(kind) {
+  function renderAssets(kind, requestHost) {
+    const shouldRequestHost = requestHost !== false;
     const isRunners = kind === "runners";
     const title = isRunners ? "ランナー用" : "静止画用";
-    const empty = isRunners
-      ? "アニメーション用フレームセットを追加します。"
-      : "静止画モード用の画像を追加します。";
 
-    view.innerHTML = `
-      <h1 class="page-title">${title}</h1>
-      <p class="page-subtitle">素材ライブラリ（プレースホルダー）。</p>
-      <section class="section">
-        <h2>登録済み</h2>
-        <div class="placeholder-list">
-          <div class="placeholder-item">
-            <span>${isRunners ? "Cat（組み込み）" : "サンプル静止画（未接続）"}</span>
-            <span>モック</span>
+    if (!isRunners) {
+      view.innerHTML = `
+        <h1 class="page-title">${title}</h1>
+        <p class="page-subtitle">静止画モード用の素材ライブラリ。</p>
+        <section class="section">
+          <h2>登録済み</h2>
+          <div class="placeholder-list">
+            <div class="placeholder-item">
+              <span>まだありません</span>
+              <span>—</span>
+            </div>
           </div>
+          <div class="empty-action">
+            <button class="btn" type="button" disabled>新規作成</button>
+            <p class="hint">
+              静止画モードはまだ接続されていないため、素材の追加・保存はできません。
+            </p>
+          </div>
+        </section>
+      `;
+      if (shouldRequestHost) postHost({ type: "getIndicators" });
+      return;
+    }
+
+    const builtinRows = runnersCatalog.builtin
+      .map((runner) => {
+        const label = escapeHtml(runner.label || runner.id);
+        return `
+          <div class="asset-row">
+            <div class="asset-row-main">
+              <strong>${label}</strong>
+              <span class="asset-meta">組み込み</span>
+            </div>
+            <div class="asset-row-actions">
+              <span class="hint" style="margin:0">削除不可</span>
+            </div>
+          </div>`;
+      })
+      .join("");
+
+    const customRows =
+      runnersCatalog.custom.length === 0
+        ? `
           <div class="placeholder-item">
             <span>カスタム素材はまだありません</span>
             <span>—</span>
-          </div>
+          </div>`
+        : runnersCatalog.custom
+            .map((runner) => {
+              const name = escapeHtml(runner.name);
+              const frames =
+                typeof runner.frameCount === "number"
+                  ? `${runner.frameCount} フレーム`
+                  : "カスタム";
+              return `
+          <div class="asset-row" data-custom-runner="${name}">
+            <div class="asset-row-main">
+              <strong>${name}</strong>
+              <span class="asset-meta">${frames}</span>
+            </div>
+            <div class="asset-row-actions">
+              <button class="btn secondary" type="button" data-edit-runner="${name}">編集</button>
+              <button class="btn danger" type="button" data-delete-runner="${name}">削除</button>
+            </div>
+          </div>`;
+            })
+            .join("");
+
+    view.innerHTML = `
+      <h1 class="page-title">${title}</h1>
+      <p class="page-subtitle">アニメーション用フレームセットのライブラリ。</p>
+      <section class="section">
+        <h2>登録済み</h2>
+        <div class="asset-list">
+          ${builtinRows}
+          ${customRows}
         </div>
         <div class="empty-action">
-          <button class="btn" type="button" disabled>新規作成</button>
-          <p class="hint">${empty}</p>
+          <button class="btn" type="button" data-create-runner>新規作成</button>
+          <p class="hint">既存のカスタムランナー編集ウィンドウでフレームを追加・保存します。</p>
         </div>
       </section>
     `;
+
+    const createBtn = view.querySelector("[data-create-runner]");
+    if (createBtn) {
+      createBtn.addEventListener("click", () => {
+        postHost({ type: "openCustomRunnerEditor" });
+      });
+    }
+
+    view.querySelectorAll("[data-edit-runner]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const name = btn.getAttribute("data-edit-runner");
+        if (!name) return;
+        postHost({ type: "openCustomRunnerEditor", name });
+      });
+    });
+
+    view.querySelectorAll("[data-delete-runner]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const name = btn.getAttribute("data-delete-runner");
+        if (!name) return;
+        if (!confirm(`「${name}」を削除しますか？`)) return;
+        postHost({ type: "deleteCustomRunner", name });
+      });
+    });
+
+    if (shouldRequestHost) postHost({ type: "getIndicators" });
   }
 
   function renderNotFound(route) {
@@ -410,6 +496,11 @@
       const data = event.data;
       if (!data || data.type !== "indicators") return;
       applyIndicatorState(data.items || [], data.runners);
+      const route = currentRoute();
+      const assetsMatch = /^assets\/(runners|stills)$/.exec(route);
+      if (assetsMatch) {
+        renderAssets(assetsMatch[1], false);
+      }
     });
   }
 

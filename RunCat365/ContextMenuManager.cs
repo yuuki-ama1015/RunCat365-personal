@@ -30,6 +30,7 @@ namespace RunCat365
         private readonly Action<SpeedSource, Runner> setIndicatorRunner;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly CustomRunnerRepository customRunnerRepository;
+        private readonly Action<string> onCustomRunnerDeleted;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
 
         internal ContextMenuManager(
@@ -58,6 +59,11 @@ namespace RunCat365
             this.setIndicatorRunner = setIndicatorRunner;
             this.applyCustomRunner = applyCustomRunner;
             this.customRunnerRepository = customRunnerRepository;
+            this.onCustomRunnerDeleted = deletedName =>
+            {
+                onCustomRunnerDeleted(deletedName);
+                settingsForm?.NotifyIndicatorsChanged();
+            };
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
 
             systemInfoMenu.Text = "-\n-\n-\n-\n-";
@@ -142,9 +148,7 @@ namespace RunCat365
             settingsMenu.Click += (sender, e) => ShowOrActivateSettingsWindow();
 
             var customRunnersMenu = new CustomToolStripMenuItem(Strings.Menu_CustomRunners);
-            customRunnersMenu.Click += (sender, e) => ShowOrActivateCustomRunnerWindow(
-                customRunnerRepository, onCustomRunnerDeleted
-            );
+            customRunnersMenu.Click += (sender, e) => ShowOrActivateCustomRunnerWindow();
 
             var endlessGameMenu = new CustomToolStripMenuItem(Strings.Menu_EndlessGame);
             endlessGameMenu.Click += (sender, e) => ShowOrActivateGameWindow(getSystemTheme);
@@ -548,24 +552,27 @@ namespace RunCat365
             }
         }
 
-        private void ShowOrActivateCustomRunnerWindow(
-            CustomRunnerRepository repository,
-            Action<string> onCustomRunnerDeleted
-        )
+        private void ShowOrActivateCustomRunnerWindow(string? selectName = null)
         {
             if (customRunnerForm is null)
             {
-                customRunnerForm = new CustomRunnerForm(repository, onCustomRunnerDeleted);
+                customRunnerForm = new CustomRunnerForm(customRunnerRepository, onCustomRunnerDeleted);
                 customRunnerForm.FormClosed += (sender, e) =>
                 {
                     customRunnerForm = null;
+                    settingsForm?.NotifyIndicatorsChanged();
                 };
                 customRunnerForm.Show();
             }
             else
             {
+                if (customRunnerForm.WindowState == FormWindowState.Minimized)
+                {
+                    customRunnerForm.WindowState = FormWindowState.Normal;
+                }
                 customRunnerForm.Activate();
             }
+            customRunnerForm.SelectRunnerByName(selectName);
         }
 
         private void ShowOrActivateSettingsWindow()
@@ -578,7 +585,9 @@ namespace RunCat365
                     setIndicatorRunner,
                     applyCustomRunner,
                     isSpeedSourceAvailable,
-                    customRunnerRepository
+                    customRunnerRepository,
+                    openCustomRunnerEditor: selectName => ShowOrActivateCustomRunnerWindow(selectName),
+                    onCustomRunnerDeleted: this.onCustomRunnerDeleted
                 );
                 settingsForm.FormClosed += (sender, e) =>
                 {

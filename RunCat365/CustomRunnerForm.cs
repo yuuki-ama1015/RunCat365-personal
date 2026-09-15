@@ -834,6 +834,20 @@ namespace RunCat365
             UpdateRunnerActionButtons();
         }
 
+        internal void SelectRunnerByName(string? name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return;
+            for (int i = 0; i < runnerListBox.Items.Count; i++)
+            {
+                if (runnerListBox.Items[i] is string itemName &&
+                    itemName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                {
+                    runnerListBox.SelectedIndex = i;
+                    return;
+                }
+            }
+        }
+
         private void ClearPendingFrames()
         {
             previewView.Clear();

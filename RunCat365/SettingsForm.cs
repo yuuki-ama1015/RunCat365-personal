@@ -28,6 +28,8 @@ namespace RunCat365
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
         private readonly CustomRunnerRepository customRunnerRepository;
+        private readonly Action<string?> openCustomRunnerEditor;
+        private readonly Action<string> onCustomRunnerDeleted;
         private readonly WebView2 webView = new();
         private bool isInitialized;
         private bool isWebViewReady;
@@ -38,7 +40,9 @@ namespace RunCat365
             Action<SpeedSource, Runner> setIndicatorRunner,
             Action<SpeedSource, string> applyCustomRunner,
             Func<SpeedSource, bool> isSpeedSourceAvailable,
-            CustomRunnerRepository customRunnerRepository
+            CustomRunnerRepository customRunnerRepository,
+            Action<string?> openCustomRunnerEditor,
+            Action<string> onCustomRunnerDeleted
         )
         {
             this.getConfigs = getConfigs;
@@ -47,6 +51,8 @@ namespace RunCat365
             this.applyCustomRunner = applyCustomRunner;
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
             this.customRunnerRepository = customRunnerRepository;
+            this.openCustomRunnerEditor = openCustomRunnerEditor;
+            this.onCustomRunnerDeleted = onCustomRunnerDeleted;
 
             Text = Strings.Window_Settings;
             Icon = Resources.AppIcon;
@@ -176,6 +182,32 @@ namespace RunCat365
 
                     applyCustomRunner(speedSource, name);
                     PostIndicatorsState();
+                    return;
+                }
+
+                if (type == "openCustomRunnerEditor")
+                {
+                    string? selectName = null;
+                    if (root.TryGetProperty("name", out var nameElement))
+                    {
+                        selectName = nameElement.GetString();
+                        if (string.IsNullOrWhiteSpace(selectName)) selectName = null;
+                    }
+                    openCustomRunnerEditor(selectName);
+                    return;
+                }
+
+                if (type == "deleteCustomRunner")
+                {
+                    if (!root.TryGetProperty("name", out var nameElement)) return;
+                    var name = nameElement.GetString();
+                    if (string.IsNullOrWhiteSpace(name)) return;
+
+                    if (customRunnerRepository.Delete(name))
+                    {
+                        onCustomRunnerDeleted(name);
+                    }
+                    PostIndicatorsState();
                 }
             }
             catch (JsonException)
@@ -250,7 +282,7 @@ namespace RunCat365
 
                 var custom = customProfiles
                     .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(p => new { name = p.Name })
+                    .Select(p => new { name = p.Name, frameCount = p.FrameFileNames.Count })
                     .ToArray();
 
                 var payload = JsonSerializer.Serialize(new

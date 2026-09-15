@@ -59,7 +59,10 @@ namespace RunCat365
                     browserExecutableFolder: null,
                     userDataFolder: userDataFolder
                 );
+                if (IsDisposed || !IsHandleCreated || webView.IsDisposed) return;
+
                 await webView.EnsureCoreWebView2Async(environment);
+                if (IsDisposed || !IsHandleCreated || webView.IsDisposed) return;
 
                 var contentRoot = Path.Combine(AppContext.BaseDirectory, "settings-ui");
                 webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
@@ -71,8 +74,16 @@ namespace RunCat365
                 webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
                 webView.CoreWebView2.Navigate($"https://{VirtualHostName}/index.html");
             }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (InvalidOperationException) when (IsDisposed || !IsHandleCreated || webView.IsDisposed)
+            {
+            }
             catch (Exception ex)
             {
+                if (IsDisposed || !IsHandleCreated) return;
+
                 MessageBox.Show(
                     $"Failed to initialize settings UI.\n{ex.Message}",
                     Strings.Message_Warning,

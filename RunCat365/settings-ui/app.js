@@ -7,7 +7,6 @@
   ];
 
   const view = document.getElementById("view");
-  const sidebar = document.getElementById("sidebar");
   const app = document.querySelector(".app");
   const toggle = document.getElementById("sidebar-toggle");
 
@@ -41,6 +40,18 @@
   function setActiveNav(route) {
     document.querySelectorAll(".tree-item").forEach((el) => {
       el.classList.toggle("active", el.dataset.route === route);
+    });
+
+    document.querySelectorAll(".tree-group").forEach((group) => {
+      const key = group.dataset.group;
+      let active = route === key;
+      if (!active && key === "indicators") {
+        active = route.startsWith("indicator/");
+      }
+      if (!active && key === "assets") {
+        active = route.startsWith("assets/");
+      }
+      group.classList.toggle("active", active);
     });
   }
 
@@ -119,6 +130,7 @@
 
       const checkbox = card.querySelector('input[type="checkbox"]');
       const hint = card.querySelector(".unavailable-hint");
+      const runnerLabel = card.querySelector("[data-card-runner]");
       if (!(checkbox instanceof HTMLInputElement)) return;
 
       const available = state.available;
@@ -126,6 +138,10 @@
       checkbox.checked = available && state.enabled;
       if (hint) {
         hint.hidden = available;
+      }
+      if (runnerLabel) {
+        const preview = runnerPreviewLabel(state);
+        runnerLabel.textContent = `${preview.name}（${preview.kind}）`;
       }
     });
 
@@ -165,35 +181,7 @@
     if (previewKind) previewKind.textContent = preview.kind;
   }
 
-  function renderHome() {
-    const cards = INDICATORS.map((item) => {
-      const state = indicatorState[item.id];
-      const available = !state || state.available;
-      const checked = available && state ? state.enabled : false;
-      const disabledAttr = available ? "" : " disabled";
-      const checkedAttr = checked ? " checked" : "";
-      const hintHidden = available ? " hidden" : "";
-      return `
-      <article class="card" data-indicator-id="${item.id}">
-        <h3>${item.label}</h3>
-        <p>${item.blurb}</p>
-        <div class="card-actions">
-          <label class="toggle">
-            <input type="checkbox" data-enable-toggle="${item.id}"${checkedAttr}${disabledAttr} />
-            トレイに表示
-          </label>
-          <a class="btn secondary" href="#indicator/${item.id}">詳しく設定</a>
-        </div>
-        <p class="hint unavailable-hint"${hintHidden}>このPCでは使えません</p>
-      </article>`;
-    }).join("");
-
-    view.innerHTML = `
-      <h1 class="page-title">ホーム</h1>
-      <p class="page-subtitle">トレイに表示するインジケーターを切り替えます。</p>
-      <div class="card-grid">${cards}</div>
-    `;
-
+  function bindEnableToggles() {
     view.querySelectorAll("[data-enable-toggle]").forEach((input) => {
       input.addEventListener("change", () => {
         if (!(input instanceof HTMLInputElement)) return;
@@ -206,8 +194,77 @@
         });
       });
     });
+  }
 
+  function buildIndicatorCardsHtml() {
+    return INDICATORS.map((item) => {
+      const state = indicatorState[item.id];
+      const available = !state || state.available;
+      const checked = available && state ? state.enabled : false;
+      const disabledAttr = available ? "" : " disabled";
+      const checkedAttr = checked ? " checked" : "";
+      const hintHidden = available ? " hidden" : "";
+      const preview = runnerPreviewLabel(state);
+      return `
+      <article class="card" data-indicator-id="${item.id}">
+        <h3>${item.label}</h3>
+        <p>${item.blurb}</p>
+        <p class="card-runner" data-card-runner>${escapeHtml(preview.name)}（${preview.kind}）</p>
+        <div class="card-actions">
+          <label class="toggle">
+            <input type="checkbox" data-enable-toggle="${item.id}"${checkedAttr}${disabledAttr} />
+            トレイに表示
+          </label>
+          <a class="btn secondary" href="#indicator/${item.id}">詳しく設定</a>
+        </div>
+        <p class="hint unavailable-hint"${hintHidden}>このPCでは使えません</p>
+      </article>`;
+    }).join("");
+  }
+
+  function renderHome() {
+    view.innerHTML = `
+      <h1 class="page-title">ホーム</h1>
+      <p class="page-subtitle">トレイに表示するインジケーターを切り替えます。</p>
+      <div class="card-grid">${buildIndicatorCardsHtml()}</div>
+    `;
+
+    bindEnableToggles();
     postHost({ type: "getIndicators" });
+  }
+
+  function renderIndicatorsParent() {
+    view.innerHTML = `
+      <h1 class="page-title">個別設定</h1>
+      <p class="page-subtitle">インジケーターごとの表示と素材を設定します。</p>
+      <div class="card-grid">${buildIndicatorCardsHtml()}</div>
+    `;
+
+    bindEnableToggles();
+    postHost({ type: "getIndicators" });
+  }
+
+  function renderAssetsParent() {
+    view.innerHTML = `
+      <h1 class="page-title">素材</h1>
+      <p class="page-subtitle">トレイ表示に使う素材ライブラリです。</p>
+      <div class="card-grid">
+        <article class="card">
+          <h3>ランナー用</h3>
+          <p>アニメーション用フレームセットのライブラリ。</p>
+          <div class="card-actions">
+            <a class="btn secondary" href="#assets/runners">開く</a>
+          </div>
+        </article>
+        <article class="card">
+          <h3>静止画用</h3>
+          <p>静止画モード用の素材ライブラリ。</p>
+          <div class="card-actions">
+            <a class="btn secondary" href="#assets/stills">開く</a>
+          </div>
+        </article>
+      </div>
+    `;
   }
 
   function renderIndicator(id) {
@@ -276,10 +333,10 @@
 
         <aside class="sticky-preview" aria-label="プレビュー">
           <div class="preview-stage">
-            <div class="preview-cat" title="静的モック"></div>
+            <div class="preview-cat" aria-hidden="true"></div>
           </div>
           <strong data-preview-name>${escapeHtml(preview.name)}</strong>
-          <p class="hint" style="margin:6px 0 0" data-preview-kind>${preview.kind}</p>
+          <p class="hint preview-kind" data-preview-kind>${preview.kind}</p>
         </aside>
       </div>
     `;
@@ -360,7 +417,7 @@
               <span class="asset-meta">組み込み</span>
             </div>
             <div class="asset-row-actions">
-              <span class="hint" style="margin:0">削除不可</span>
+              <span class="hint hint-inline">削除不可</span>
             </div>
           </div>`;
       })
@@ -454,6 +511,16 @@
       return;
     }
 
+    if (route === "indicators") {
+      renderIndicatorsParent();
+      return;
+    }
+
+    if (route === "assets") {
+      renderAssetsParent();
+      return;
+    }
+
     const indicatorMatch = /^indicator\/([a-z]+)$/.exec(route);
     if (indicatorMatch) {
       renderIndicator(indicatorMatch[1]);
@@ -484,10 +551,20 @@
   document.querySelectorAll(".tree-group").forEach((group) => {
     group.addEventListener("click", () => {
       const key = group.dataset.group;
+      if (!key) return;
       const children = document.querySelector(`[data-children="${key}"]`);
-      const expanded = group.getAttribute("aria-expanded") !== "false";
-      group.setAttribute("aria-expanded", String(!expanded));
-      children?.classList.toggle("collapsed", expanded);
+      const route = currentRoute();
+
+      if (route === key) {
+        const expanded = group.getAttribute("aria-expanded") !== "false";
+        group.setAttribute("aria-expanded", String(!expanded));
+        children?.classList.toggle("collapsed", expanded);
+        return;
+      }
+
+      group.setAttribute("aria-expanded", "true");
+      children?.classList.remove("collapsed");
+      location.hash = key;
     });
   });
 

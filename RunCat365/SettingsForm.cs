@@ -15,17 +15,30 @@
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using RunCat365.Properties;
+using System.Text.Json;
 
 namespace RunCat365
 {
     internal class SettingsForm : Form
     {
         private const string VirtualHostName = "runcat.settings";
+        private readonly Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs;
+        private readonly Action<SpeedSource, bool> setIndicatorEnabled;
+        private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
         private readonly WebView2 webView = new();
         private bool isInitialized;
+        private bool isWebViewReady;
 
-        internal SettingsForm()
+        internal SettingsForm(
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
+            Action<SpeedSource, bool> setIndicatorEnabled,
+            Func<SpeedSource, bool> isSpeedSourceAvailable
+        )
         {
+            this.getConfigs = getConfigs;
+            this.setIndicatorEnabled = setIndicatorEnabled;
+            this.isSpeedSourceAvailable = isSpeedSourceAvailable;
+
             Text = Strings.Window_Settings;
             Icon = Resources.AppIcon;
             StartPosition = FormStartPosition.CenterScreen;
@@ -72,6 +85,8 @@ namespace RunCat365
                 );
                 webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
                 webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+                webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
                 webView.CoreWebView2.Navigate($"https://{VirtualHostName}/index.html");
             }
             catch (ObjectDisposedException)
@@ -93,10 +108,138 @@ namespace RunCat365
             }
         }
 
+        private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+        {
+            if (IsDisposed || !IsHandleCreated || webView.IsDisposed) return;
+            if (!e.IsSuccess) return;
+            isWebViewReady = true;
+            PostIndicatorsState();
+        }
+
+        private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            if (IsDisposed || !IsHandleCreated || webView.IsDisposed) return;
+
+            try
+            {
+                using var document = JsonDocument.Parse(e.WebMessageAsJson);
+                var root = document.RootElement;
+                if (!root.TryGetProperty("type", out var typeElement)) return;
+
+                var type = typeElement.GetString();
+                if (type == "getIndicators")
+                {
+                    PostIndicatorsState();
+                    return;
+                }
+
+                if (type == "setIndicatorEnabled")
+                {
+                    if (!root.TryGetProperty("id", out var idElement)) return;
+                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
+                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+
+                    setIndicatorEnabled(speedSource, enabledElement.GetBoolean());
+                    PostIndicatorsState();
+                }
+            }
+            catch (JsonException)
+            {
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (InvalidOperationException) when (IsDisposed || webView.IsDisposed)
+            {
+            }
+        }
+
+        internal void NotifyIndicatorsChanged()
+        {
+            if (IsDisposed || !IsHandleCreated) return;
+            if (InvokeRequired)
+            {
+                BeginInvoke(NotifyIndicatorsChanged);
+                return;
+            }
+            PostIndicatorsState();
+        }
+
+        private void PostIndicatorsState()
+        {
+            if (IsDisposed || !IsHandleCreated || webView.IsDisposed) return;
+            if (!isWebViewReady || webView.CoreWebView2 is null) return;
+
+            try
+            {
+                var configs = getConfigs();
+                var items = Enum.GetValues<SpeedSource>()
+                    .Select(speedSource =>
+                    {
+                        var enabled = configs.TryGetValue(speedSource, out var config) && config.Enabled;
+                        var available = isSpeedSourceAvailable(speedSource);
+                        return new
+                        {
+                            id = ToIndicatorId(speedSource),
+                            enabled,
+                            available
+                        };
+                    })
+                    .ToArray();
+
+                var payload = JsonSerializer.Serialize(new
+                {
+                    type = "indicators",
+                    items
+                });
+                webView.CoreWebView2.PostWebMessageAsJson(payload);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (InvalidOperationException) when (IsDisposed || webView.IsDisposed)
+            {
+            }
+        }
+
+        private static string ToIndicatorId(SpeedSource speedSource)
+        {
+            return speedSource switch
+            {
+                SpeedSource.CPU => "cpu",
+                SpeedSource.GPU => "gpu",
+                SpeedSource.Memory => "memory",
+                SpeedSource.Temperature => "temperature",
+                _ => speedSource.ToString().ToLowerInvariant(),
+            };
+        }
+
+        private static bool TryParseIndicatorId(string? id, out SpeedSource speedSource)
+        {
+            SpeedSource? parsed = id switch
+            {
+                "cpu" => SpeedSource.CPU,
+                "gpu" => SpeedSource.GPU,
+                "memory" => SpeedSource.Memory,
+                "temperature" => SpeedSource.Temperature,
+                _ => null,
+            };
+
+            if (parsed is SpeedSource value)
+            {
+                speedSource = value;
+                return true;
+            }
+
+            speedSource = SpeedSource.CPU;
+            return false;
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
+                isWebViewReady = false;
                 webView.Dispose();
             }
             base.Dispose(disposing);

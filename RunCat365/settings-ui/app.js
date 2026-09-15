@@ -11,6 +11,18 @@
   const app = document.querySelector(".app");
   const toggle = document.getElementById("sidebar-toggle");
 
+  /** @type {Record<string, { id: string, enabled: boolean, available: boolean }>} */
+  let indicatorState = {};
+
+  function isHostAvailable() {
+    return !!(window.chrome && chrome.webview);
+  }
+
+  function postHost(message) {
+    if (!isHostAvailable()) return;
+    chrome.webview.postMessage(message);
+  }
+
   function currentRoute() {
     const hash = location.hash.replace(/^#/, "");
     return hash || "home";
@@ -22,27 +34,78 @@
     });
   }
 
+  function applyIndicatorState(items) {
+    indicatorState = {};
+    (items || []).forEach((item) => {
+      if (!item || !item.id) return;
+      indicatorState[item.id] = {
+        id: item.id,
+        enabled: !!item.enabled,
+        available: item.available !== false,
+      };
+    });
+
+    document.querySelectorAll("[data-indicator-id]").forEach((card) => {
+      const id = card.dataset.indicatorId;
+      const state = indicatorState[id];
+      if (!state) return;
+
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      const hint = card.querySelector(".unavailable-hint");
+      if (!(checkbox instanceof HTMLInputElement)) return;
+
+      const available = state.available;
+      checkbox.disabled = !available;
+      checkbox.checked = available && state.enabled;
+      if (hint) {
+        hint.hidden = available;
+      }
+    });
+  }
+
   function renderHome() {
-    const cards = INDICATORS.map(
-      (item) => `
-      <article class="card">
+    const cards = INDICATORS.map((item) => {
+      const state = indicatorState[item.id];
+      const available = !state || state.available;
+      const checked = available && state ? state.enabled : false;
+      const disabledAttr = available ? "" : " disabled";
+      const checkedAttr = checked ? " checked" : "";
+      const hintHidden = available ? " hidden" : "";
+      return `
+      <article class="card" data-indicator-id="${item.id}">
         <h3>${item.label}</h3>
         <p>${item.blurb}</p>
         <div class="card-actions">
           <label class="toggle">
-            <input type="checkbox" checked disabled />
+            <input type="checkbox" data-enable-toggle="${item.id}"${checkedAttr}${disabledAttr} />
             トレイに表示
           </label>
           <a class="btn secondary" href="#indicator/${item.id}">詳しく設定</a>
         </div>
-      </article>`
-    ).join("");
+        <p class="hint unavailable-hint"${hintHidden}>このPCでは使えません</p>
+      </article>`;
+    }).join("");
 
     view.innerHTML = `
       <h1 class="page-title">ホーム</h1>
-      <p class="page-subtitle">インジケーターの概要です（Phase 1 プレースホルダー）。</p>
+      <p class="page-subtitle">トレイに表示するインジケーターを切り替えます。</p>
       <div class="card-grid">${cards}</div>
     `;
+
+    view.querySelectorAll("[data-enable-toggle]").forEach((input) => {
+      input.addEventListener("change", () => {
+        if (!(input instanceof HTMLInputElement)) return;
+        const id = input.dataset.enableToggle;
+        if (!id || input.disabled) return;
+        postHost({
+          type: "setIndicatorEnabled",
+          id,
+          enabled: input.checked,
+        });
+      });
+    });
+
+    postHost({ type: "getIndicators" });
   }
 
   function renderIndicator(id) {
@@ -54,7 +117,7 @@
 
     view.innerHTML = `
       <h1 class="page-title">${item.label}</h1>
-      <p class="page-subtitle">個別設定（プレースホルダー）。実データ連携は Phase 2 以降です。</p>
+      <p class="page-subtitle">個別設定（プレースホルダー）。詳細連携は Phase 3 以降です。</p>
       <div class="detail-layout">
         <div>
           <section class="section">
@@ -107,7 +170,7 @@
             <div class="preview-cat" title="静的モック"></div>
           </div>
           <strong>プレビュー</strong>
-          <p class="hint" style="margin:6px 0 0">静的モック（Phase 1）</p>
+          <p class="hint" style="margin:6px 0 0">静的モック（プレースホルダー）</p>
         </aside>
       </div>
     `;
@@ -217,6 +280,14 @@
       children?.classList.toggle("collapsed", expanded);
     });
   });
+
+  if (isHostAvailable()) {
+    chrome.webview.addEventListener("message", (event) => {
+      const data = event.data;
+      if (!data || data.type !== "indicators") return;
+      applyIndicatorState(data.items || []);
+    });
+  }
 
   window.addEventListener("hashchange", render);
   updateToggleChrome(false);

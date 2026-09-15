@@ -536,5 +536,23 @@ namespace RunCat365.Properties {
                 return ResourceManager.GetString("Menu_IndicatorEnabled", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Quick settings.
+        /// </summary>
+        internal static string Menu_QuickSettings {
+            get {
+                return ResourceManager.GetString("Menu_QuickSettings", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Settings.
+        /// </summary>
+        internal static string Window_Settings {
+            get {
+                return ResourceManager.GetString("Window_Settings", resourceCulture);
+            }
+        }
     }
 }

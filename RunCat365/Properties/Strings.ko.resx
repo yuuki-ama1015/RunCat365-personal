@@ -303,4 +303,10 @@
   <data name="Menu_IndicatorEnabled" xml:space="preserve">
     <value>사용</value>
   </data>
+  <data name="Menu_QuickSettings" xml:space="preserve">
+    <value>빠른 설정</value>
+  </data>
+  <data name="Window_Settings" xml:space="preserve">
+    <value>설정</value>
+  </data>
 </root>

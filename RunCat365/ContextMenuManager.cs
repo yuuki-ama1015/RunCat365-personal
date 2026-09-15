@@ -24,6 +24,7 @@ namespace RunCat365
         private readonly ContextMenuStrip contextMenuStrip;
         private EndlessGameForm? endlessGameForm;
         private CustomRunnerForm? customRunnerForm;
+        private SettingsForm? settingsForm;
 
         internal ContextMenuManager(
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
@@ -115,14 +116,17 @@ namespace RunCat365
             };
             launchAtStartupMenu.Click += (sender, e) => HandleStartupMenuClick(sender, toggleLaunchAtStartup);
 
-            var settingsMenu = new CustomToolStripMenuItem(Strings.Menu_Settings);
-            settingsMenu.DropDownItems.AddRange(
+            var quickSettingsMenu = new CustomToolStripMenuItem(Strings.Menu_QuickSettings);
+            quickSettingsMenu.DropDownItems.AddRange(
                 themeMenu,
                 indicatorsMenu,
                 fpsMaxLimitMenu,
                 temperatureUnitMenu,
                 launchAtStartupMenu
             );
+
+            var settingsMenu = new CustomToolStripMenuItem(Strings.Menu_Settings);
+            settingsMenu.Click += (sender, e) => ShowOrActivateSettingsWindow();
 
             var customRunnersMenu = new CustomToolStripMenuItem(Strings.Menu_CustomRunners);
             customRunnersMenu.Click += (sender, e) => ShowOrActivateCustomRunnerWindow(
@@ -158,6 +162,7 @@ namespace RunCat365
                 customRunnersMenu,
                 new ToolStripSeparator(),
                 settingsMenu,
+                quickSettingsMenu,
                 informationMenu,
                 endlessGameMenu,
                 new ToolStripSeparator(),
@@ -547,6 +552,27 @@ namespace RunCat365
             }
         }
 
+        private void ShowOrActivateSettingsWindow()
+        {
+            if (settingsForm is null)
+            {
+                settingsForm = new SettingsForm();
+                settingsForm.FormClosed += (sender, e) =>
+                {
+                    settingsForm = null;
+                };
+                settingsForm.Show();
+            }
+            else
+            {
+                if (settingsForm.WindowState == FormWindowState.Minimized)
+                {
+                    settingsForm.WindowState = FormWindowState.Normal;
+                }
+                settingsForm.Activate();
+            }
+        }
+
         internal void ShowBalloonTip(BalloonTipType balloonTipType)
         {
             var info = balloonTipType.GetInfo();
@@ -633,6 +659,7 @@ namespace RunCat365
                 contextMenuStrip?.Dispose();
                 endlessGameForm?.Dispose();
                 customRunnerForm?.Dispose();
+                settingsForm?.Dispose();
             }
         }
 

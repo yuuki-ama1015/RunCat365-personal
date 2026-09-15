@@ -257,6 +257,15 @@ a {
   accent-color: var(--seed);
 }
 
+.toggle:has(input:disabled) {
+  opacity: 0.65;
+}
+
+.card .unavailable-hint {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
 .btn {
   appearance: none;
   border: 1px solid transparent;

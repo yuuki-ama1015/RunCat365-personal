@@ -25,6 +25,9 @@ namespace RunCat365
         private EndlessGameForm? endlessGameForm;
         private CustomRunnerForm? customRunnerForm;
         private SettingsForm? settingsForm;
+        private readonly Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs;
+        private readonly Action<SpeedSource, bool> setIndicatorEnabled;
+        private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
 
         internal ContextMenuManager(
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
@@ -47,6 +50,10 @@ namespace RunCat365
             Action onExit
         )
         {
+            this.getConfigs = getConfigs;
+            this.setIndicatorEnabled = setIndicatorEnabled;
+            this.isSpeedSourceAvailable = isSpeedSourceAvailable;
+
             systemInfoMenu.Text = "-\n-\n-\n-\n-";
             systemInfoMenu.Enabled = false;
 
@@ -219,6 +226,7 @@ namespace RunCat365
                     // DropDownOpening refreshes checkbox states when the menu reopens.
                     var configs = getConfigs();
                     item.Checked = configs.TryGetValue(source, out var updated) && updated.Enabled;
+                    settingsForm?.NotifyIndicatorsChanged();
                 };
 
                 var runnersMenu = new CustomToolStripMenuItem(Strings.Menu_Runner)
@@ -556,7 +564,7 @@ namespace RunCat365
         {
             if (settingsForm is null)
             {
-                settingsForm = new SettingsForm();
+                settingsForm = new SettingsForm(getConfigs, setIndicatorEnabled, isSpeedSourceAvailable);
                 settingsForm.FormClosed += (sender, e) =>
                 {
                     settingsForm = null;

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>設定</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <button
+      id="sidebar-toggle"
+      class="sidebar-toggle"
+      type="button"
+      aria-label="メニューを隠す"
+      title="メニューを隠す"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="4" width="7" height="16" rx="1.5" class="pane-left" />
+        <rect x="12" y="4" width="9" height="16" rx="1.5" class="pane-right" />
+      </svg>
+    </button>
+
+    <aside id="sidebar" class="sidebar" aria-label="設定メニュー">
+      <div class="sidebar-header">
+        <span class="brand-dot"></span>
+        <span class="brand-label">RunCat 365</span>
+      </div>
+      <nav class="tree" id="nav-tree">
+        <a class="tree-item" data-route="home" href="#home">ホーム</a>
+
+        <button class="tree-group" type="button" data-group="indicators" aria-expanded="true">
+          <span>個別設定</span>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="tree-children" data-children="indicators">
+          <a class="tree-item nested" data-route="indicator/cpu" href="#indicator/cpu">CPU</a>
+          <a class="tree-item nested" data-route="indicator/gpu" href="#indicator/gpu">GPU</a>
+          <a class="tree-item nested" data-route="indicator/memory" href="#indicator/memory">Memory</a>
+          <a class="tree-item nested" data-route="indicator/temperature" href="#indicator/temperature">Temperature</a>
+        </div>
+
+        <button class="tree-group" type="button" data-group="assets" aria-expanded="true">
+          <span>素材</span>
+          <span class="chevron" aria-hidden="true"></span>
+        </button>
+        <div class="tree-children" data-children="assets">
+          <a class="tree-item nested" data-route="assets/runners" href="#assets/runners">ランナー用</a>
+          <a class="tree-item nested" data-route="assets/stills" href="#assets/stills">静止画用</a>
+        </div>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <div id="view" class="view"></div>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -303,4 +303,10 @@
   <data name="Menu_IndicatorEnabled" xml:space="preserve">
     <value>啟用</value>
   </data>
+  <data name="Menu_QuickSettings" xml:space="preserve">
+    <value>快速設定</value>
+  </data>
+  <data name="Window_Settings" xml:space="preserve">
+    <value>設定</value>
+  </data>
 </root>

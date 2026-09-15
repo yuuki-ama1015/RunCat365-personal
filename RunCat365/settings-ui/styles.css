@@ -291,6 +291,18 @@ a {
   filter: brightness(0.97);
 }
 
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+  filter: none;
+}
+
+.btn.danger {
+  background: #fdecea;
+  color: var(--danger);
+  border-color: #f5c6c2;
+}
+
 .section {
   background: var(--surface-card);
   border: 1px solid var(--outline);
@@ -456,6 +468,45 @@ a {
   border-radius: var(--radius-md);
   background: #fbfcfc;
   color: var(--on-surface-variant);
+}
+
+.asset-list {
+  display: grid;
+  gap: 10px;
+}
+
+.asset-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-md);
+  background: #fbfcfc;
+}
+
+.asset-row-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.asset-row-main strong {
+  font-weight: 650;
+}
+
+.asset-meta {
+  color: var(--on-surface-variant);
+  font-size: 0.85rem;
+}
+
+.asset-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .empty-action {

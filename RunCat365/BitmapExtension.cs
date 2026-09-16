@@ -138,6 +138,62 @@ namespace RunCat365
             return newBitmap;
         }
 
+
+        /// <summary>
+        /// Pseudo-blend two frames for tray still crossfade. Lerps RGB; alpha uses max so the mask stays filled.
+        /// </summary>
+        internal static Bitmap Blend(this Bitmap from, Bitmap to, float amount)
+        {
+            amount = Math.Clamp(amount, 0f, 1f);
+            var width = Math.Min(from.Width, to.Width);
+            var height = Math.Min(from.Height, to.Height);
+            var newBitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+
+            using var fromLock = new BitmapLock(from, ImageLockMode.ReadOnly);
+            using var toLock = new BitmapLock(to, ImageLockMode.ReadOnly);
+            using var dstLock = new BitmapLock(newBitmap, ImageLockMode.WriteOnly);
+
+            unsafe
+            {
+                byte* fromPtr = (byte*)fromLock.Data.Scan0;
+                byte* toPtr = (byte*)toLock.Data.Scan0;
+                byte* dstPtr = (byte*)dstLock.Data.Scan0;
+                float inv = 1f - amount;
+
+                for (int y = 0; y < height; y++)
+                {
+                    byte* fromRow = fromPtr + (y * fromLock.Data.Stride);
+                    byte* toRow = toPtr + (y * toLock.Data.Stride);
+                    byte* dstRow = dstPtr + (y * dstLock.Data.Stride);
+
+                    for (int x = 0; x < width; x++)
+                    {
+                        byte* fromPixel = fromRow + (x * 4);
+                        byte* toPixel = toRow + (x * 4);
+                        byte* dstPixel = dstRow + (x * 4);
+
+                        byte fa = fromPixel[3];
+                        byte ta = toPixel[3];
+                        if (fa == 0 && ta == 0)
+                        {
+                            dstPixel[0] = 0;
+                            dstPixel[1] = 0;
+                            dstPixel[2] = 0;
+                            dstPixel[3] = 0;
+                            continue;
+                        }
+
+                        dstPixel[0] = (byte)(fromPixel[0] * inv + toPixel[0] * amount);
+                        dstPixel[1] = (byte)(fromPixel[1] * inv + toPixel[1] * amount);
+                        dstPixel[2] = (byte)(fromPixel[2] * inv + toPixel[2] * amount);
+                        dstPixel[3] = fa > ta ? fa : ta;
+                    }
+                }
+            }
+
+            return newBitmap;
+        }
+
         internal static Icon ToIcon(this Bitmap bitmap)
         {
             using var pngStream = new MemoryStream();

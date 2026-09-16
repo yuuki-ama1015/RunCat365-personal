@@ -10,7 +10,7 @@
   const app = document.querySelector(".app");
   const toggle = document.getElementById("sidebar-toggle");
 
-  /** @type {Record<string, { id: string, enabled: boolean, available: boolean, runner: string, customRunnerName: string|null, colorTintEnabled: boolean, colorTintStrength: number, runnerSpeedEnabled: boolean, stillModeEnabled: boolean, stillSetName: string|null }>} */
+  /** @type {Record<string, { id: string, enabled: boolean, available: boolean, runner: string, customRunnerName: string|null, colorTintEnabled: boolean, colorTintStrength: number, runnerSpeedEnabled: boolean, stillModeEnabled: boolean, stillSetName: string|null, stillCrossfadeEnabled: boolean }>} */
   let indicatorState = {};
 
   /** @type {{ builtin: Array<{ id: string, label: string }>, custom: Array<{ name: string, frameCount?: number }> }} */
@@ -152,6 +152,7 @@
         runnerSpeedEnabled: item.runnerSpeedEnabled !== false,
         stillModeEnabled: !!item.stillModeEnabled,
         stillSetName: item.stillSetName || null,
+        stillCrossfadeEnabled: !!item.stillCrossfadeEnabled,
       };
     });
 
@@ -243,6 +244,16 @@
       stillPick.innerHTML = buildStillOptionsHtml(state);
       stillPick.disabled = !stillOn;
       stillPick.value = state.stillSetName || "";
+    }
+
+    const crossfadeRow = view.querySelector("[data-still-crossfade-row]");
+    if (crossfadeRow) {
+      crossfadeRow.hidden = !stillOn;
+    }
+    const crossfadeToggle = view.querySelector("#still-crossfade");
+    if (crossfadeToggle instanceof HTMLInputElement) {
+      crossfadeToggle.disabled = !stillOn;
+      crossfadeToggle.checked = !!state.stillCrossfadeEnabled;
     }
 
     const strengthSlider = view.querySelector("#tint-strength");
@@ -378,7 +389,7 @@
               <button class="mode-chip${state && state.stillModeEnabled ? "" : " mode-chip-muted"}" type="button" data-mode-chip="still" aria-pressed="${state && state.stillModeEnabled ? "true" : "false"}">静止画モード</button>
             </div>
             <p class="hint">
-              ランナーと色の変化は組み合わせて使えます。静止画モードは排他で、負荷帯ごとにフレームを切り替えます（クロスフェードなし）。
+              ランナーと色の変化は組み合わせて使えます。静止画モードは排他で、負荷帯ごとにフレームを切り替えます。
             </p>
             <div class="field-row tint-strength-row">
               <label for="tint-strength">濃さ <span data-tint-strength-value>${state ? clampStrength(state.colorTintStrength) : 100}</span></label>
@@ -399,6 +410,12 @@
               <select id="still-pick"${state && state.stillModeEnabled ? "" : " disabled"}>
                 ${buildStillOptionsHtml(state)}
               </select>
+            </div>
+            <div class="field-row" data-still-crossfade-row${state && state.stillModeEnabled ? "" : " hidden"}>
+              <label class="toggle" for="still-crossfade">
+                <input type="checkbox" id="still-crossfade"${state && state.stillCrossfadeEnabled ? " checked" : ""}${state && state.stillModeEnabled ? "" : " disabled"} />
+                なめらか切替
+              </label>
             </div>
             <div class="field-row">
               <label for="speed-link">速度の連動</label>
@@ -516,6 +533,18 @@
           type: "setStillSet",
           id,
           name: value,
+        });
+      });
+    }
+
+    const crossfadeToggle = view.querySelector("#still-crossfade");
+    if (crossfadeToggle instanceof HTMLInputElement) {
+      crossfadeToggle.addEventListener("change", () => {
+        if (crossfadeToggle.disabled) return;
+        postHost({
+          type: "setStillCrossfadeEnabled",
+          id,
+          enabled: crossfadeToggle.checked,
         });
       });
     }

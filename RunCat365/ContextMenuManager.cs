@@ -34,6 +34,7 @@ namespace RunCat365
         private readonly Action<SpeedSource, bool> setRunnerSpeedEnabled;
         private readonly Action<SpeedSource, bool> setStillModeEnabled;
         private readonly Action<SpeedSource, string> setStillSet;
+        private readonly Action<SpeedSource, bool> setStillCrossfadeEnabled;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly CustomRunnerRepository customRunnerRepository;
         private readonly StillSetRepository stillSetRepository;
@@ -50,6 +51,7 @@ namespace RunCat365
             Action<SpeedSource, bool> setRunnerSpeedEnabled,
             Action<SpeedSource, bool> setStillModeEnabled,
             Action<SpeedSource, string> setStillSet,
+            Action<SpeedSource, bool> setStillCrossfadeEnabled,
             CustomRunnerRepository customRunnerRepository,
             StillSetRepository stillSetRepository,
             Action<SpeedSource, string> applyCustomRunner,
@@ -77,6 +79,7 @@ namespace RunCat365
             this.setRunnerSpeedEnabled = setRunnerSpeedEnabled;
             this.setStillModeEnabled = setStillModeEnabled;
             this.setStillSet = setStillSet;
+            this.setStillCrossfadeEnabled = setStillCrossfadeEnabled;
             this.applyCustomRunner = applyCustomRunner;
             this.customRunnerRepository = customRunnerRepository;
             this.stillSetRepository = stillSetRepository;
@@ -376,6 +379,7 @@ namespace RunCat365
                 if (stillFrames.Count > 0)
                 {
                     indicator.SetStillIcons(stillFrames, getSystemTheme(), getManualTheme());
+                    indicator.SetStillCrossfadeEnabled(config.StillCrossfadeEnabled);
                     foreach (var frame in stillFrames) frame.Dispose();
                     return;
                 }
@@ -654,6 +658,7 @@ namespace RunCat365
                     setRunnerSpeedEnabled,
                     setStillModeEnabled,
                     setStillSet,
+                    setStillCrossfadeEnabled,
                     applyCustomRunner,
                     isSpeedSourceAvailable,
                     customRunnerRepository,
@@ -767,6 +772,14 @@ namespace RunCat365
             if (indicators.TryGetValue(speedSource, out var indicator))
             {
                 indicator.SetStillFrameIndex(index);
+            }
+        }
+
+        internal void SetIndicatorStillCrossfadeEnabled(SpeedSource speedSource, bool enabled)
+        {
+            if (indicators.TryGetValue(speedSource, out var indicator))
+            {
+                indicator.SetStillCrossfadeEnabled(enabled);
             }
         }
 

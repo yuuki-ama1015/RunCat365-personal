@@ -25,6 +25,7 @@ namespace RunCat365
         internal bool RunnerSpeedEnabled { get; set; }
         internal bool StillModeEnabled { get; set; }
         internal string? StillSetName { get; set; }
+        internal bool StillCrossfadeEnabled { get; set; }
 
         internal IndicatorConfig(
             SpeedSource speedSource,
@@ -35,7 +36,8 @@ namespace RunCat365
             bool runnerSpeedEnabled = true,
             int colorTintStrength = 100,
             bool stillModeEnabled = false,
-            string? stillSetName = null
+            string? stillSetName = null,
+            bool stillCrossfadeEnabled = false
         )
         {
             SpeedSource = speedSource;
@@ -47,6 +49,7 @@ namespace RunCat365
             ColorTintStrength = Math.Clamp(colorTintStrength, 0, 100);
             StillModeEnabled = stillModeEnabled;
             StillSetName = stillSetName;
+            StillCrossfadeEnabled = stillCrossfadeEnabled;
         }
 
         internal static Runner DefaultRunnerFor(SpeedSource speedSource)

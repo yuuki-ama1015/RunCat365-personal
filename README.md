@@ -12,7 +12,7 @@ Upstream is a cute running cat animation on the Windows Taskbar (`C#` / Win32 / 
 
 ## Personal changes
 
-Local derivative with up to four tray indicators (CPU / GPU / Memory / Temperature), GPU dedicated usage (used only), all ready fixed drives in storage info, and temperature→speed mapping. See commit history for details.
+Local derivative with up to four tray indicators (CPU / GPU / Memory / Temperature), GPU dedicated usage (used only), all ready fixed drives in storage info, and temperature→speed mapping. Tray **設定** opens the WebView2 settings window（ホーム / 個別設定 / 素材）. See commit history for details.
 
 ## Build / run
 

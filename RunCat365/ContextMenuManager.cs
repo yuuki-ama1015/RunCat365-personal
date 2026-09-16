@@ -28,6 +28,8 @@ namespace RunCat365
         private readonly Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs;
         private readonly Action<SpeedSource, bool> setIndicatorEnabled;
         private readonly Action<SpeedSource, Runner> setIndicatorRunner;
+        private readonly Action<SpeedSource, bool> setColorTintEnabled;
+        private readonly Action<SpeedSource, bool> setRunnerSpeedEnabled;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly CustomRunnerRepository customRunnerRepository;
         private readonly Action<string> onCustomRunnerDeleted;
@@ -37,6 +39,8 @@ namespace RunCat365
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
             Action<SpeedSource, bool> setIndicatorEnabled,
             Action<SpeedSource, Runner> setIndicatorRunner,
+            Action<SpeedSource, bool> setColorTintEnabled,
+            Action<SpeedSource, bool> setRunnerSpeedEnabled,
             CustomRunnerRepository customRunnerRepository,
             Action<SpeedSource, string> applyCustomRunner,
             Action<string> onCustomRunnerDeleted,
@@ -57,6 +61,8 @@ namespace RunCat365
             this.getConfigs = getConfigs;
             this.setIndicatorEnabled = setIndicatorEnabled;
             this.setIndicatorRunner = setIndicatorRunner;
+            this.setColorTintEnabled = setColorTintEnabled;
+            this.setRunnerSpeedEnabled = setRunnerSpeedEnabled;
             this.applyCustomRunner = applyCustomRunner;
             this.customRunnerRepository = customRunnerRepository;
             this.onCustomRunnerDeleted = deletedName =>
@@ -583,6 +589,8 @@ namespace RunCat365
                     getConfigs,
                     setIndicatorEnabled,
                     setIndicatorRunner,
+                    setColorTintEnabled,
+                    setRunnerSpeedEnabled,
                     applyCustomRunner,
                     isSpeedSourceAvailable,
                     customRunnerRepository,
@@ -631,6 +639,14 @@ namespace RunCat365
             if (indicators.TryGetValue(speedSource, out var indicator))
             {
                 indicator.SetInterval(interval);
+            }
+        }
+
+        internal void SetIndicatorLoadTint(SpeedSource speedSource, int? step)
+        {
+            if (indicators.TryGetValue(speedSource, out var indicator))
+            {
+                indicator.SetLoadTintStep(step);
             }
         }
 

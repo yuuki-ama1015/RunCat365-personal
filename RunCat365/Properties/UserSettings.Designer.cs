@@ -266,6 +266,103 @@ namespace RunCat365.Properties {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool CpuColorTintEnabled {
+            get {
+                return ((bool)(this["CpuColorTintEnabled"]));
+            }
+            set {
+                this["CpuColorTintEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool CpuRunnerSpeedEnabled {
+            get {
+                return ((bool)(this["CpuRunnerSpeedEnabled"]));
+            }
+            set {
+                this["CpuRunnerSpeedEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool GpuColorTintEnabled {
+            get {
+                return ((bool)(this["GpuColorTintEnabled"]));
+            }
+            set {
+                this["GpuColorTintEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool GpuRunnerSpeedEnabled {
+            get {
+                return ((bool)(this["GpuRunnerSpeedEnabled"]));
+            }
+            set {
+                this["GpuRunnerSpeedEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MemoryColorTintEnabled {
+            get {
+                return ((bool)(this["MemoryColorTintEnabled"]));
+            }
+            set {
+                this["MemoryColorTintEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool MemoryRunnerSpeedEnabled {
+            get {
+                return ((bool)(this["MemoryRunnerSpeedEnabled"]));
+            }
+            set {
+                this["MemoryRunnerSpeedEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TemperatureColorTintEnabled {
+            get {
+                return ((bool)(this["TemperatureColorTintEnabled"]));
+            }
+            set {
+                this["TemperatureColorTintEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool TemperatureRunnerSpeedEnabled {
+            get {
+                return ((bool)(this["TemperatureRunnerSpeedEnabled"]));
+            }
+            set {
+                this["TemperatureRunnerSpeedEnabled"] = value;
+            }
+        }
+
         public bool IndicatorsMigrated {
             get {
                 return ((bool)(this["IndicatorsMigrated"]));

@@ -10,7 +10,7 @@
   const app = document.querySelector(".app");
   const toggle = document.getElementById("sidebar-toggle");
 
-  /** @type {Record<string, { id: string, enabled: boolean, available: boolean, runner: string, customRunnerName: string|null }>} */
+  /** @type {Record<string, { id: string, enabled: boolean, available: boolean, runner: string, customRunnerName: string|null, colorTintEnabled: boolean, runnerSpeedEnabled: boolean }>} */
   let indicatorState = {};
 
   /** @type {{ builtin: Array<{ id: string, label: string }>, custom: Array<{ name: string, frameCount?: number }> }} */
@@ -120,6 +120,8 @@
         available: item.available !== false,
         runner: item.runner || "Cat",
         customRunnerName: item.customRunnerName || null,
+        colorTintEnabled: !!item.colorTintEnabled,
+        runnerSpeedEnabled: item.runnerSpeedEnabled !== false,
       };
     });
 
@@ -179,6 +181,23 @@
     const preview = runnerPreviewLabel(state);
     if (previewName) previewName.textContent = preview.name;
     if (previewKind) previewKind.textContent = preview.kind;
+
+    const runnerChip = view.querySelector('[data-mode-chip="runner"]');
+    const tintChip = view.querySelector('[data-mode-chip="tint"]');
+    if (runnerChip) {
+      runnerChip.setAttribute(
+        "aria-pressed",
+        state.runnerSpeedEnabled ? "true" : "false"
+      );
+      runnerChip.classList.toggle("mode-chip-muted", !state.runnerSpeedEnabled);
+    }
+    if (tintChip) {
+      tintChip.setAttribute(
+        "aria-pressed",
+        state.colorTintEnabled ? "true" : "false"
+      );
+      tintChip.classList.toggle("mode-chip-muted", !state.colorTintEnabled);
+    }
   }
 
   function bindEnableToggles() {
@@ -298,13 +317,13 @@
           <section class="section">
             <h2>表示モード</h2>
             <div class="mode-row">
-              <button class="mode-chip" type="button" aria-pressed="true" disabled>ランナー</button>
-              <button class="mode-chip mode-chip-muted" type="button" aria-pressed="false" disabled>色の変化</button>
+              <button class="mode-chip${state && state.runnerSpeedEnabled === false ? " mode-chip-muted" : ""}" type="button" data-mode-chip="runner" aria-pressed="${state && state.runnerSpeedEnabled !== false ? "true" : "false"}">ランナー</button>
+              <button class="mode-chip${state && state.colorTintEnabled ? "" : " mode-chip-muted"}" type="button" data-mode-chip="tint" aria-pressed="${state && state.colorTintEnabled ? "true" : "false"}">色の変化</button>
               <button class="mode-chip mode-chip-muted" type="button" aria-pressed="false" disabled>静止画モード</button>
             </div>
             <p class="hint">
-              いまはランナー表示のみ接続されています。<br />
-              色の変化 / 静止画モード はまだ未接続のため保存されません。
+              ランナーと色の変化を組み合わせて使えます。色の変化は負荷に応じて赤くなります。<br />
+              静止画モードはまだ未接続のため保存されません。
             </p>
           </section>
 
@@ -349,6 +368,30 @@
           type: "setIndicatorEnabled",
           id,
           enabled: enableToggle.checked,
+        });
+      });
+    }
+
+    const runnerChip = view.querySelector('[data-mode-chip="runner"]');
+    if (runnerChip) {
+      runnerChip.addEventListener("click", () => {
+        const pressed = runnerChip.getAttribute("aria-pressed") === "true";
+        postHost({
+          type: "setRunnerSpeedEnabled",
+          id,
+          enabled: !pressed,
+        });
+      });
+    }
+
+    const tintChip = view.querySelector('[data-mode-chip="tint"]');
+    if (tintChip) {
+      tintChip.addEventListener("click", () => {
+        const pressed = tintChip.getAttribute("aria-pressed") === "true";
+        postHost({
+          type: "setColorTintEnabled",
+          id,
+          enabled: !pressed,
         });
       });
     }

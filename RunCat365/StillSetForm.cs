@@ -248,7 +248,7 @@ namespace RunCat365
         {
             using var dialog = new OpenFileDialog
             {
-                Filter = "PNG (*.png)|*.png",
+                Filter = "Images|*.png;*.gif|PNG (*.png)|*.png|GIF (*.gif)|*.gif",
                 Multiselect = true,
                 Title = "静止画モード用フレームを選択"
             };
@@ -257,6 +257,16 @@ namespace RunCat365
             foreach (var path in dialog.FileNames)
             {
                 if (pendingFrames.Count >= StillSetRepository.MAX_FRAME_COUNT) break;
+
+                if (path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!TryAddGifFrames(path))
+                    {
+                        break;
+                    }
+                    continue;
+                }
+
                 try
                 {
                     pendingFrames.Add(new Bitmap(path));
@@ -271,6 +281,54 @@ namespace RunCat365
                 selectedFrameIndex = 0;
             }
             RebuildFrameGrid();
+        }
+
+        /// <summary>
+        /// Extracts GIF frames, evenly samples to remaining capacity (capped at max), appends to pending.
+        /// Shows a Japanese message and returns false when the GIF has fewer than min frames or fails to decode.
+        /// </summary>
+        private bool TryAddGifFrames(string path)
+        {
+            var remaining = StillSetRepository.MAX_FRAME_COUNT - pendingFrames.Count;
+            if (remaining <= 0) return true;
+
+            List<Bitmap> extracted;
+            try
+            {
+                extracted = GifFrameExtractor.ExtractFrames(path);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show(
+                    this,
+                    "GIFの読み込みに失敗しました。",
+                    "警告",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return false;
+            }
+
+            if (extracted.Count < StillSetRepository.MIN_FRAME_COUNT)
+            {
+                var count = extracted.Count;
+                GifFrameExtractor.DisposeAll(extracted);
+                MessageBox.Show(
+                    this,
+                    $"GIFのフレーム数が不足しています。最低 {StillSetRepository.MIN_FRAME_COUNT} 枚必要です。（現在 {count} 枚）",
+                    "警告",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return false;
+            }
+
+            var sampled = GifFrameExtractor.EvenlySample(
+                extracted,
+                Math.Min(remaining, StillSetRepository.MAX_FRAME_COUNT)
+            );
+            pendingFrames.AddRange(sampled);
+            return true;
         }
 
         private void RemoveSelected()

@@ -557,7 +557,7 @@ namespace RunCat365
         {
             using var dialog = new OpenFileDialog
             {
-                Filter = "PNG Images|*.png",
+                Filter = "Images|*.png;*.gif|PNG Images|*.png|GIF Images|*.gif",
                 Multiselect = true,
                 Title = Strings.CustomRunner_AddFrames
             };
@@ -568,6 +568,16 @@ namespace RunCat365
             foreach (var file in sortedFiles)
             {
                 if (pendingFrames.Count >= CustomRunnerRepository.MAX_FRAME_COUNT) break;
+
+                if (file.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!TryAddGifFrames(file, CustomRunnerRepository.MAX_FRAME_COUNT, CustomRunnerRepository.MIN_FRAME_COUNT))
+                    {
+                        break;
+                    }
+                    continue;
+                }
+
                 try
                 {
                     pendingFrames.Add(new Bitmap(file));
@@ -578,6 +588,55 @@ namespace RunCat365
                 }
             }
             OnFramesChanged();
+        }
+
+        /// <summary>
+        /// Extracts GIF frames, evenly samples to remaining capacity (capped at max), appends to pending.
+        /// Shows a Japanese message and returns false when the GIF has fewer than min frames or fails to decode.
+        /// </summary>
+        private bool TryAddGifFrames(string file, int maxFrameCount, int minFrameCount)
+        {
+            var remaining = maxFrameCount - pendingFrames.Count;
+            if (remaining <= 0) return true;
+
+            List<Bitmap> extracted;
+            try
+            {
+                extracted = GifFrameExtractor.ExtractFrames(file);
+            }
+            catch (Exception ex) when (
+                ex is OutOfMemoryException
+                or ArgumentException
+                or FileNotFoundException
+                or IOException
+                or UnauthorizedAccessException)
+            {
+                Debug.WriteLine($"Failed to load GIF '{file}': {ex.Message}");
+                MessageBox.Show(
+                    "GIFの読み込みに失敗しました。",
+                    Strings.Message_Warning,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return false;
+            }
+
+            if (extracted.Count < minFrameCount)
+            {
+                var count = extracted.Count;
+                GifFrameExtractor.DisposeAll(extracted);
+                MessageBox.Show(
+                    $"GIFのフレーム数が不足しています。最低 {minFrameCount} 枚必要です。（現在 {count} 枚）",
+                    Strings.Message_Warning,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return false;
+            }
+
+            var sampled = GifFrameExtractor.EvenlySample(extracted, Math.Min(remaining, maxFrameCount));
+            pendingFrames.AddRange(sampled);
+            return true;
         }
 
         private void RemoveFrameButtonClick(object? sender, EventArgs e)

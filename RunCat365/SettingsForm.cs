@@ -15,6 +15,7 @@
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
 using RunCat365.Properties;
+using System.Drawing.Imaging;
 using System.Text.Json;
 
 namespace RunCat365
@@ -330,6 +331,12 @@ namespace RunCat365
                         onStillSetDeleted(name);
                     }
                     PostIndicatorsState();
+                    return;
+                }
+
+                if (type == "getPreview")
+                {
+                    HandleGetPreview(root);
                 }
             }
             catch (JsonException)
@@ -446,6 +453,192 @@ namespace RunCat365
             catch (InvalidOperationException) when (IsDisposed || webView.IsDisposed)
             {
             }
+        }
+
+        private void HandleGetPreview(JsonElement root)
+        {
+            if (!root.TryGetProperty("id", out var idElement)) return;
+            if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+
+            var load = 0f;
+            if (root.TryGetProperty("load", out var loadElement)
+                && loadElement.ValueKind == JsonValueKind.Number)
+            {
+                load = loadElement.GetSingle();
+            }
+            load = Math.Clamp(load, 0f, 100f);
+
+            var tick = 0;
+            if (root.TryGetProperty("tick", out var tickElement)
+                && tickElement.ValueKind == JsonValueKind.Number)
+            {
+                tick = Math.Max(0, tickElement.GetInt32());
+            }
+
+            if (!isWebViewReady || webView.CoreWebView2 is null) return;
+            var preview = BuildPreviewPayload(speedSource, load, tick);
+
+            try
+            {
+                var payload = JsonSerializer.Serialize(preview);
+                webView.CoreWebView2.PostWebMessageAsJson(payload);
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (InvalidOperationException) when (IsDisposed || webView.IsDisposed)
+            {
+            }
+        }
+
+        private object BuildPreviewPayload(SpeedSource speedSource, float load, int tick)
+        {
+            var configs = getConfigs();
+            configs.TryGetValue(speedSource, out var config);
+            var stillMode = config?.StillModeEnabled ?? false;
+            var tintEnabled = !stillMode && (config?.ColorTintEnabled ?? false);
+            var tintStrength = config?.ColorTintStrength ?? 100;
+            var runnerSpeedEnabled = config?.RunnerSpeedEnabled ?? true;
+            var id = ToIndicatorId(speedSource);
+
+            string? imageDataUrl = null;
+            string label = "プレビュー";
+            int? intervalMs = null;
+
+            if (stillMode)
+            {
+                var stillName = config?.StillSetName;
+                if (!string.IsNullOrWhiteSpace(stillName))
+                {
+                    var frames = stillSetRepository.LoadFrames(stillName);
+                    try
+                    {
+                        if (frames.Count > 0)
+                        {
+                            var index = StillSetRepository.LoadToFrameIndex(load, frames.Count);
+                            imageDataUrl = ToPngDataUrl(frames[index]);
+                            label = $"{stillName} · #{index + 1}/{frames.Count}";
+                        }
+                        else
+                        {
+                            label = "静止画セットなし";
+                        }
+                    }
+                    finally
+                    {
+                        foreach (var frame in frames) frame.Dispose();
+                    }
+                }
+                else
+                {
+                    label = "静止画セットを選択";
+                }
+            }
+            else
+            {
+                List<Bitmap>? frames = null;
+                var ownsFrames = false;
+                try
+                {
+                    var customName = config?.CustomRunnerName;
+                    if (!string.IsNullOrEmpty(customName))
+                    {
+                        frames = customRunnerRepository.LoadFrames(customName);
+                        ownsFrames = true;
+                        label = customName;
+                    }
+                    else
+                    {
+                        var runner = config?.Runner ?? Runner.Cat;
+                        frames = LoadBuiltInFrames(runner);
+                        ownsFrames = false;
+                        label = runner.GetLocalizedString();
+                    }
+
+                    if (frames is null || frames.Count == 0)
+                    {
+                        label = "素材なし";
+                    }
+                    else
+                    {
+                        var frameIndex = tick % frames.Count;
+                        using var rendered = RenderPreviewFrame(
+                            frames[frameIndex],
+                            tintEnabled,
+                            load,
+                            tintStrength
+                        );
+                        imageDataUrl = ToPngDataUrl(rendered);
+                        label = tintEnabled
+                            ? $"{label} · tint {BitmapExtension.LoadToTintStep(load) + 1}/16"
+                            : label;
+                        intervalMs = PreviewIntervalMs(
+                            runnerSpeedEnabled ? load : 0f
+                        );
+                    }
+                }
+                finally
+                {
+                    if (ownsFrames && frames is not null)
+                    {
+                        foreach (var frame in frames) frame.Dispose();
+                    }
+                }
+            }
+
+            return new
+            {
+                type = "preview",
+                id,
+                load,
+                imageDataUrl,
+                label,
+                intervalMs,
+                stillMode,
+                tintEnabled
+            };
+        }
+
+        private static List<Bitmap> LoadBuiltInFrames(Runner runner)
+        {
+            var rm = Resources.ResourceManager;
+            var capacity = runner.GetFrameNumber();
+            var bitmaps = new List<Bitmap>(capacity);
+            var runnerName = runner.GetString();
+            for (int i = 0; i < capacity; i++)
+            {
+                var iconName = $"{runnerName}_{i}".ToLowerInvariant();
+                if (rm.GetObject(iconName) is Bitmap bitmap)
+                {
+                    bitmaps.Add(bitmap);
+                }
+            }
+            return bitmaps;
+        }
+
+        private static Bitmap RenderPreviewFrame(
+            Bitmap source,
+            bool tintEnabled,
+            float load,
+            int tintStrength
+        )
+        {
+            if (!tintEnabled) return new Bitmap(source);
+            var step = BitmapExtension.LoadToTintStep(load);
+            return source.ApplyLoadTint(step, tintStrength);
+        }
+
+        private static int PreviewIntervalMs(float load)
+        {
+            var speed = Math.Max(1.0f, (load / 5.0f));
+            return Math.Max(40, (int)(500.0f / speed));
+        }
+
+        private static string? ToPngDataUrl(Bitmap bitmap)
+        {
+            using var stream = new MemoryStream();
+            bitmap.Save(stream, ImageFormat.Png);
+            return "data:image/png;base64," + Convert.ToBase64String(stream.ToArray());
         }
 
         private static string ToIndicatorId(SpeedSource speedSource)

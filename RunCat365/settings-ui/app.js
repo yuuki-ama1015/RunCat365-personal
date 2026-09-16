@@ -26,6 +26,15 @@
   /** @type {Array<{ name: string, frameCount?: number }>} */
   let stillSetsCatalog = [];
 
+  /** @type {number} */
+  let previewLoad = 50;
+  /** @type {number} */
+  let previewTick = 0;
+  /** @type {number|null} */
+  let previewTimer = null;
+  /** @type {string|null} */
+  let previewIndicatorId = null;
+
   function isHostAvailable() {
     return !!(window.chrome && chrome.webview);
   }
@@ -184,6 +193,75 @@
     }
   }
 
+
+  function stopPreviewLoop() {
+    if (previewTimer != null) {
+      clearTimeout(previewTimer);
+      previewTimer = null;
+    }
+  }
+
+  function requestPreview(id, options) {
+    if (!id) return;
+    const opts = options || {};
+    if (opts.resetTick) {
+      stopPreviewLoop();
+      previewTick = 0;
+    }
+    postHost({
+      type: "getPreview",
+      id,
+      load: previewLoad,
+      tick: previewTick,
+    });
+  }
+
+  function schedulePreviewTick(id, intervalMs) {
+    stopPreviewLoop();
+    if (!id || !(intervalMs > 0)) return;
+    previewTimer = window.setTimeout(() => {
+      previewTick += 1;
+      requestPreview(id);
+    }, intervalMs);
+  }
+
+  function applyPreviewMessage(data) {
+    if (!data || data.type !== "preview") return;
+    const detailRoot = view.querySelector("[data-indicator-detail]");
+    if (!detailRoot) return;
+    const id = detailRoot.dataset.indicatorDetail;
+    if (!id || data.id !== id) return;
+
+    const img = view.querySelector("[data-preview-image]");
+    const placeholder = view.querySelector("[data-preview-placeholder]");
+    const loadValue = view.querySelector("[data-preview-load-value]");
+    const labelEl = view.querySelector("[data-preview-frame-label]");
+
+    if (img instanceof HTMLImageElement) {
+      if (data.imageDataUrl) {
+        img.src = data.imageDataUrl;
+        img.hidden = false;
+        if (placeholder) placeholder.hidden = true;
+      } else {
+        img.removeAttribute("src");
+        img.hidden = true;
+        if (placeholder) placeholder.hidden = false;
+      }
+    }
+    if (loadValue) loadValue.textContent = String(Math.round(Number(data.load) || previewLoad));
+    if (labelEl) {
+      labelEl.textContent = data.label || "";
+    }
+
+    if (data.stillMode) {
+      stopPreviewLoop();
+    } else if (typeof data.intervalMs === "number" && data.intervalMs > 0) {
+      schedulePreviewTick(id, data.intervalMs);
+    } else {
+      stopPreviewLoop();
+    }
+  }
+
   function syncIndicatorDetail(id) {
     const state = indicatorState[id];
     if (!state) return;
@@ -264,6 +342,10 @@
     }
     if (strengthValue) {
       strengthValue.textContent = String(state.colorTintStrength);
+    }
+
+    if (previewIndicatorId === id) {
+      requestPreview(id, { resetTick: true });
     }
   }
 
@@ -428,10 +510,16 @@
 
         <aside class="sticky-preview" aria-label="プレビュー">
           <div class="preview-stage">
-            <div class="preview-cat" aria-hidden="true"></div>
+            <img class="preview-image" data-preview-image alt="" hidden />
+            <div class="preview-placeholder" data-preview-placeholder aria-hidden="true">素材なし</div>
           </div>
           <strong data-preview-name>${escapeHtml(preview.name)}</strong>
           <p class="hint preview-kind" data-preview-kind>${preview.kind}</p>
+          <p class="hint preview-frame-label" data-preview-frame-label></p>
+          <div class="field-row preview-load-row">
+            <label for="preview-load">プレビュー負荷 <span data-preview-load-value>${previewLoad}</span></label>
+            <input type="range" id="preview-load" min="0" max="100" value="${previewLoad}" />
+          </div>
         </aside>
       </div>
     `;
@@ -549,6 +637,19 @@
       });
     }
 
+    const previewLoadSlider = view.querySelector("#preview-load");
+    const previewLoadValue = view.querySelector("[data-preview-load-value]");
+    if (previewLoadSlider instanceof HTMLInputElement) {
+      previewLoadSlider.addEventListener("input", () => {
+        previewLoad = Math.max(0, Math.min(100, Number(previewLoadSlider.value) || 0));
+        if (previewLoadValue) previewLoadValue.textContent = String(previewLoad);
+        requestPreview(id, { resetTick: true });
+      });
+    }
+
+    previewIndicatorId = id;
+    stopPreviewLoop();
+    requestPreview(id, { resetTick: true });
     postHost({ type: "getIndicators" });
   }
 
@@ -728,6 +829,11 @@
     const route = currentRoute();
     setActiveNav(route);
 
+    if (!route.startsWith("indicator/")) {
+      stopPreviewLoop();
+      previewIndicatorId = null;
+    }
+
     if (route === "home") {
       renderHome();
       return;
@@ -793,7 +899,12 @@
   if (isHostAvailable()) {
     chrome.webview.addEventListener("message", (event) => {
       const data = event.data;
-      if (!data || data.type !== "indicators") return;
+      if (!data) return;
+      if (data.type === "preview") {
+        applyPreviewMessage(data);
+        return;
+      }
+      if (data.type !== "indicators") return;
       applyIndicatorState(data.items || [], data.runners, data.stillSets || []);
       const route = currentRoute();
       const assetsMatch = /^assets\/(runners|stills)$/.exec(route);

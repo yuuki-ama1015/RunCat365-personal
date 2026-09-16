@@ -17,7 +17,7 @@ using RunCat365.Properties;
 namespace RunCat365
 {
     /// <summary>
-    /// Minimal still-set editor: name + ordered PNG list (2–16). YAGNI vs CustomRunnerForm.
+    /// Still-set editor: name + thumbnail grid of all frames (2–16). Selection drives remove/reorder.
     /// </summary>
     internal class StillSetForm : Form
     {
@@ -28,9 +28,10 @@ namespace RunCat365
         private readonly Action<string>? onDeleted;
         private readonly string? initialName;
         private readonly List<Bitmap> pendingFrames = [];
+        private int selectedFrameIndex = -1;
 
         private TextBox nameTextBox = null!;
-        private ListBox frameListBox = null!;
+        private FlowLayoutPanel framePanel = null!;
         private Button addButton = null!;
         private Button removeButton = null!;
         private Button moveUpButton = null!;
@@ -57,7 +58,7 @@ namespace RunCat365
             MaximizeBox = false;
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(420, 460);
+            ClientSize = new Size(460, 520);
             BackColor = Color.FromArgb(45, 45, 45);
             ForeColor = Color.White;
             Padding = new Padding(16);
@@ -78,7 +79,7 @@ namespace RunCat365
             nameTextBox = new TextBox
             {
                 Location = new Point(16, 40),
-                Width = 380,
+                Width = 420,
                 MaxLength = NAME_MAX_LENGTH,
                 BackColor = Color.FromArgb(60, 60, 60),
                 ForeColor = Color.White,
@@ -92,45 +93,45 @@ namespace RunCat365
                 AutoSize = true,
                 Location = new Point(16, 78)
             };
-            frameListBox = new ListBox
+
+            framePanel = new FlowLayoutPanel
             {
                 Location = new Point(16, 102),
-                Size = new Size(280, 260),
-                BackColor = Color.FromArgb(60, 60, 60),
-                ForeColor = Color.White,
+                Size = new Size(320, 300),
+                AutoScroll = true,
+                BackColor = Color.FromArgb(55, 55, 55),
                 BorderStyle = BorderStyle.FixedSingle,
-                IntegralHeight = false
+                WrapContents = true
             };
-            frameListBox.SelectedIndexChanged += (_, _) => UpdateActionState();
 
-            addButton = CreateButton("追加…", new Point(308, 102), AddFrames);
-            removeButton = CreateButton("削除", new Point(308, 140), RemoveSelected);
-            moveUpButton = CreateButton("上へ", new Point(308, 178), () => MoveSelected(-1));
-            moveDownButton = CreateButton("下へ", new Point(308, 216), () => MoveSelected(1));
+            addButton = CreateButton("追加…", new Point(348, 102), AddFrames);
+            removeButton = CreateButton("削除", new Point(348, 140), RemoveSelected);
+            moveUpButton = CreateButton("上へ", new Point(348, 178), () => MoveSelected(-1));
+            moveDownButton = CreateButton("下へ", new Point(348, 216), () => MoveSelected(1));
 
             hintLabel = new Label
             {
                 Text = $"透過 PNG を {StillSetRepository.MIN_FRAME_COUNT}〜{StillSetRepository.MAX_FRAME_COUNT} 枚。トレイ用に自動リサイズします。",
                 AutoSize = false,
-                Size = new Size(380, 36),
-                Location = new Point(16, 372),
+                Size = new Size(420, 36),
+                Location = new Point(16, 416),
                 ForeColor = Color.FromArgb(170, 170, 170)
             };
 
-            saveButton = CreateButton("保存", new Point(208, 416), SaveSet);
+            saveButton = CreateButton("保存", new Point(248, 464), SaveSet);
             saveButton.Size = new Size(90, 28);
-            deleteButton = CreateButton("削除…", new Point(308, 416), DeleteSet);
+            deleteButton = CreateButton("削除…", new Point(348, 464), DeleteSet);
             deleteButton.Size = new Size(90, 28);
             deleteButton.Enabled = !string.IsNullOrEmpty(initialName);
 
-            var closeButton = CreateButton("閉じる", new Point(16, 416), Close);
+            var closeButton = CreateButton("閉じる", new Point(16, 464), Close);
             closeButton.Size = new Size(90, 28);
 
             Controls.AddRange(
                 nameLabel,
                 nameTextBox,
                 framesLabel,
-                frameListBox,
+                framePanel,
                 addButton,
                 removeButton,
                 moveUpButton,
@@ -172,22 +173,75 @@ namespace RunCat365
             {
                 pendingFrames.Add(frame);
             }
-            RefreshFrameList();
+            if (pendingFrames.Count > 0) selectedFrameIndex = 0;
+            RebuildFrameGrid();
         }
 
-        private void RefreshFrameList()
+        private void RebuildFrameGrid()
         {
-            var selected = frameListBox.SelectedIndex;
-            frameListBox.Items.Clear();
+            framePanel.SuspendLayout();
+            foreach (Control oldTile in framePanel.Controls)
+            {
+                oldTile.Dispose();
+            }
+            framePanel.Controls.Clear();
+
             for (int i = 0; i < pendingFrames.Count; i++)
             {
-                frameListBox.Items.Add($"#{i + 1}  ({pendingFrames[i].Width}×{pendingFrames[i].Height})");
+                framePanel.Controls.Add(CreateFrameTile(i));
             }
-            if (pendingFrames.Count > 0)
-            {
-                frameListBox.SelectedIndex = Math.Clamp(selected, 0, pendingFrames.Count - 1);
-            }
+
+            framePanel.ResumeLayout();
             UpdateActionState();
+        }
+
+        private Panel CreateFrameTile(int frameIndex)
+        {
+            var selected = frameIndex == selectedFrameIndex;
+            var container = new Panel
+            {
+                Size = new Size(70, 76),
+                Margin = new Padding(4),
+                BackColor = selected ? Color.FromArgb(75, 95, 125) : Color.Transparent,
+                Cursor = Cursors.Hand
+            };
+
+            var pictureBox = new PictureBox
+            {
+                Size = new Size(48, 48),
+                Location = new Point(11, 0),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Image = pendingFrames[frameIndex],
+                BackColor = Color.FromArgb(40, 40, 40),
+                Cursor = Cursors.Hand
+            };
+
+            var indexLabel = new Label
+            {
+                Text = $"{frameIndex + 1}",
+                Size = new Size(70, 18),
+                Location = new Point(0, 52),
+                TextAlign = ContentAlignment.TopCenter,
+                ForeColor = Color.FromArgb(170, 170, 170),
+                Cursor = Cursors.Hand
+            };
+
+            void select(object? sender, EventArgs e) => SelectFrame(frameIndex);
+            container.Click += select;
+            pictureBox.Click += select;
+            indexLabel.Click += select;
+
+            container.Controls.Add(pictureBox);
+            container.Controls.Add(indexLabel);
+            return container;
+        }
+
+        private void SelectFrame(int frameIndex)
+        {
+            if (frameIndex < 0 || frameIndex >= pendingFrames.Count) return;
+            if (selectedFrameIndex == frameIndex) return;
+            selectedFrameIndex = frameIndex;
+            RebuildFrameGrid();
         }
 
         private void AddFrames()
@@ -212,32 +266,43 @@ namespace RunCat365
                     // Skip unreadable files.
                 }
             }
-            RefreshFrameList();
+            if (pendingFrames.Count > 0 && selectedFrameIndex < 0)
+            {
+                selectedFrameIndex = 0;
+            }
+            RebuildFrameGrid();
         }
 
         private void RemoveSelected()
         {
-            var index = frameListBox.SelectedIndex;
+            var index = selectedFrameIndex;
             if (index < 0 || index >= pendingFrames.Count) return;
             pendingFrames[index].Dispose();
             pendingFrames.RemoveAt(index);
-            RefreshFrameList();
+            if (pendingFrames.Count == 0)
+            {
+                selectedFrameIndex = -1;
+            }
+            else
+            {
+                selectedFrameIndex = Math.Clamp(index, 0, pendingFrames.Count - 1);
+            }
+            RebuildFrameGrid();
         }
 
         private void MoveSelected(int delta)
         {
-            var index = frameListBox.SelectedIndex;
+            var index = selectedFrameIndex;
             var target = index + delta;
             if (index < 0 || target < 0 || target >= pendingFrames.Count) return;
             (pendingFrames[index], pendingFrames[target]) = (pendingFrames[target], pendingFrames[index]);
-            frameListBox.SelectedIndex = target;
-            RefreshFrameList();
-            frameListBox.SelectedIndex = target;
+            selectedFrameIndex = target;
+            RebuildFrameGrid();
         }
 
         private void UpdateActionState()
         {
-            var selected = frameListBox.SelectedIndex;
+            var selected = selectedFrameIndex;
             removeButton.Enabled = selected >= 0;
             moveUpButton.Enabled = selected > 0;
             moveDownButton.Enabled = selected >= 0 && selected < pendingFrames.Count - 1;

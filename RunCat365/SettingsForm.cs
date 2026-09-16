@@ -28,11 +28,16 @@ namespace RunCat365
         private readonly Action<SpeedSource, bool> setColorTintEnabled;
         private readonly Action<SpeedSource, int> setColorTintStrength;
         private readonly Action<SpeedSource, bool> setRunnerSpeedEnabled;
+        private readonly Action<SpeedSource, bool> setStillModeEnabled;
+        private readonly Action<SpeedSource, string> setStillSet;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
         private readonly CustomRunnerRepository customRunnerRepository;
+        private readonly StillSetRepository stillSetRepository;
         private readonly Action<string?> openCustomRunnerEditor;
         private readonly Action<string> onCustomRunnerDeleted;
+        private readonly Action<string?> openStillSetEditor;
+        private readonly Action<string> onStillSetDeleted;
         private readonly WebView2 webView = new();
         private bool isInitialized;
         private bool isWebViewReady;
@@ -44,11 +49,16 @@ namespace RunCat365
             Action<SpeedSource, bool> setColorTintEnabled,
             Action<SpeedSource, int> setColorTintStrength,
             Action<SpeedSource, bool> setRunnerSpeedEnabled,
+            Action<SpeedSource, bool> setStillModeEnabled,
+            Action<SpeedSource, string> setStillSet,
             Action<SpeedSource, string> applyCustomRunner,
             Func<SpeedSource, bool> isSpeedSourceAvailable,
             CustomRunnerRepository customRunnerRepository,
+            StillSetRepository stillSetRepository,
             Action<string?> openCustomRunnerEditor,
-            Action<string> onCustomRunnerDeleted
+            Action<string> onCustomRunnerDeleted,
+            Action<string?> openStillSetEditor,
+            Action<string> onStillSetDeleted
         )
         {
             this.getConfigs = getConfigs;
@@ -57,11 +67,16 @@ namespace RunCat365
             this.setColorTintEnabled = setColorTintEnabled;
             this.setColorTintStrength = setColorTintStrength;
             this.setRunnerSpeedEnabled = setRunnerSpeedEnabled;
+            this.setStillModeEnabled = setStillModeEnabled;
+            this.setStillSet = setStillSet;
             this.applyCustomRunner = applyCustomRunner;
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
             this.customRunnerRepository = customRunnerRepository;
+            this.stillSetRepository = stillSetRepository;
             this.openCustomRunnerEditor = openCustomRunnerEditor;
             this.onCustomRunnerDeleted = onCustomRunnerDeleted;
+            this.openStillSetEditor = openStillSetEditor;
+            this.onStillSetDeleted = onStillSetDeleted;
 
             Text = Strings.Window_Settings;
             Icon = Resources.AppIcon;
@@ -213,6 +228,31 @@ namespace RunCat365
                     return;
                 }
 
+                if (type == "setStillModeEnabled")
+                {
+                    if (!root.TryGetProperty("id", out var idElement)) return;
+                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
+                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+
+                    setStillModeEnabled(speedSource, enabledElement.GetBoolean());
+                    PostIndicatorsState();
+                    return;
+                }
+
+                if (type == "setStillSet")
+                {
+                    if (!root.TryGetProperty("id", out var idElement)) return;
+                    if (!root.TryGetProperty("name", out var nameElement)) return;
+                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+
+                    var name = nameElement.GetString();
+                    if (string.IsNullOrWhiteSpace(name)) return;
+
+                    setStillSet(speedSource, name);
+                    PostIndicatorsState();
+                    return;
+                }
+
                 if (type == "setCustomRunner")
                 {
                     if (!root.TryGetProperty("id", out var idElement)) return;
@@ -248,6 +288,32 @@ namespace RunCat365
                     if (customRunnerRepository.Delete(name))
                     {
                         onCustomRunnerDeleted(name);
+                    }
+                    PostIndicatorsState();
+                    return;
+                }
+
+                if (type == "openStillSetEditor")
+                {
+                    string? selectName = null;
+                    if (root.TryGetProperty("name", out var nameElement))
+                    {
+                        selectName = nameElement.GetString();
+                        if (string.IsNullOrWhiteSpace(selectName)) selectName = null;
+                    }
+                    openStillSetEditor(selectName);
+                    return;
+                }
+
+                if (type == "deleteStillSet")
+                {
+                    if (!root.TryGetProperty("name", out var nameElement)) return;
+                    var name = nameElement.GetString();
+                    if (string.IsNullOrWhiteSpace(name)) return;
+
+                    if (stillSetRepository.Delete(name))
+                    {
+                        onStillSetDeleted(name);
                     }
                     PostIndicatorsState();
                 }
@@ -287,6 +353,11 @@ namespace RunCat365
                     customProfiles.Select(p => p.Name),
                     StringComparer.OrdinalIgnoreCase
                 );
+                var stillProfiles = stillSetRepository.GetAll();
+                var stillNames = new HashSet<string>(
+                    stillProfiles.Select(p => p.Name),
+                    StringComparer.OrdinalIgnoreCase
+                );
 
                 var items = Enum.GetValues<SpeedSource>()
                     .Select(speedSource =>
@@ -303,6 +374,14 @@ namespace RunCat365
                             customRunnerName = config.CustomRunnerName;
                         }
 
+                        string? stillSetName = null;
+                        if (config is not null
+                            && !string.IsNullOrEmpty(config.StillSetName)
+                            && stillNames.Contains(config.StillSetName))
+                        {
+                            stillSetName = config.StillSetName;
+                        }
+
                         return new
                         {
                             id = ToIndicatorId(speedSource),
@@ -312,7 +391,9 @@ namespace RunCat365
                             customRunnerName,
                             colorTintEnabled = config?.ColorTintEnabled ?? false,
                             colorTintStrength = config?.ColorTintStrength ?? 100,
-                            runnerSpeedEnabled = config?.RunnerSpeedEnabled ?? true
+                            runnerSpeedEnabled = config?.RunnerSpeedEnabled ?? true,
+                            stillModeEnabled = config?.StillModeEnabled ?? false,
+                            stillSetName
                         };
                     })
                     .ToArray();
@@ -330,11 +411,17 @@ namespace RunCat365
                     .Select(p => new { name = p.Name, frameCount = p.FrameFileNames.Count })
                     .ToArray();
 
+                var stillSets = stillProfiles
+                    .OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+                    .Select(p => new { name = p.Name, frameCount = p.FrameFileNames.Count })
+                    .ToArray();
+
                 var payload = JsonSerializer.Serialize(new
                 {
                     type = "indicators",
                     items,
-                    runners = new { builtin, custom }
+                    runners = new { builtin, custom },
+                    stillSets
                 });
                 webView.CoreWebView2.PostWebMessageAsJson(payload);
             }

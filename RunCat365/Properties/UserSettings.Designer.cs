@@ -411,6 +411,103 @@ namespace RunCat365.Properties {
             }
         }
 
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool CpuStillModeEnabled {
+            get {
+                return ((bool)(this["CpuStillModeEnabled"]));
+            }
+            set {
+                this["CpuStillModeEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string CpuStillSetName {
+            get {
+                return ((string)(this["CpuStillSetName"]));
+            }
+            set {
+                this["CpuStillSetName"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool GpuStillModeEnabled {
+            get {
+                return ((bool)(this["GpuStillModeEnabled"]));
+            }
+            set {
+                this["GpuStillModeEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string GpuStillSetName {
+            get {
+                return ((string)(this["GpuStillSetName"]));
+            }
+            set {
+                this["GpuStillSetName"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MemoryStillModeEnabled {
+            get {
+                return ((bool)(this["MemoryStillModeEnabled"]));
+            }
+            set {
+                this["MemoryStillModeEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string MemoryStillSetName {
+            get {
+                return ((string)(this["MemoryStillSetName"]));
+            }
+            set {
+                this["MemoryStillSetName"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TemperatureStillModeEnabled {
+            get {
+                return ((bool)(this["TemperatureStillModeEnabled"]));
+            }
+            set {
+                this["TemperatureStillModeEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string TemperatureStillSetName {
+            get {
+                return ((string)(this["TemperatureStillSetName"]));
+            }
+            set {
+                this["TemperatureStillSetName"] = value;
+            }
+        }
+
         public bool IndicatorsMigrated {
             get {
                 return ((bool)(this["IndicatorsMigrated"]));

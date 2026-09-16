@@ -1,0 +1,91 @@
+name: Release Win x64
+
+on:
+  push:
+    tags:
+      - "personal-v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag name (e.g. personal-v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Publish win-x64 self-contained
+        run: >
+          dotnet publish RunCat365/RunCat365.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -o publish/win-x64
+
+      - name: Verify settings-ui in publish output
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "publish/win-x64/settings-ui/index.html")) {
+            Write-Error "settings-ui missing from publish output"
+            Get-ChildItem -Recurse publish/win-x64 | Select-Object -First 50 FullName
+            exit 1
+          }
+          Write-Host "settings-ui present in publish output"
+
+      - name: Zip publish folder
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "publish/win-x64/*" -DestinationPath "RunCat365-personal-win-x64.zip" -Force
+          Get-Item "RunCat365-personal-win-x64.zip" | Format-List Name, Length
+
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name }}
+          target_commitish: ${{ github.sha }}
+          draft: false
+          prerelease: false
+          files: RunCat365-personal-win-x64.zip
+          body: |
+            Personal build of **RunCat365-personal** (Windows x64, self-contained publish).
+
+            This is a personal save-point zip — **not** a Microsoft Store / WAP package.
+
+            ### Requirements
+            - Windows 10 version 19041.0 or higher (x64)
+            - [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (needed for the settings UI; usually preinstalled on modern Windows)
+
+            ### Includes
+            - Settings UI (WebView2)
+            - Color tint
+            - Still mode
+            - GIF import
+            - and other personal enhancements from this fork
+
+            ### Install
+            1. Download `RunCat365-personal-win-x64.zip`
+            2. Unzip to a folder
+            3. Run `RunCat 365.exe`

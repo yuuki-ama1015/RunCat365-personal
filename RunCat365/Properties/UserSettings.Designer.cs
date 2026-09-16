@@ -508,6 +508,55 @@ namespace RunCat365.Properties {
             }
         }
 
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool CpuStillCrossfadeEnabled {
+            get {
+                return ((bool)(this["CpuStillCrossfadeEnabled"]));
+            }
+            set {
+                this["CpuStillCrossfadeEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool GpuStillCrossfadeEnabled {
+            get {
+                return ((bool)(this["GpuStillCrossfadeEnabled"]));
+            }
+            set {
+                this["GpuStillCrossfadeEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MemoryStillCrossfadeEnabled {
+            get {
+                return ((bool)(this["MemoryStillCrossfadeEnabled"]));
+            }
+            set {
+                this["MemoryStillCrossfadeEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool TemperatureStillCrossfadeEnabled {
+            get {
+                return ((bool)(this["TemperatureStillCrossfadeEnabled"]));
+            }
+            set {
+                this["TemperatureStillCrossfadeEnabled"] = value;
+            }
+        }
+
         public bool IndicatorsMigrated {
             get {
                 return ((bool)(this["IndicatorsMigrated"]));

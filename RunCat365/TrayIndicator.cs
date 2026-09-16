@@ -20,10 +20,13 @@ namespace RunCat365
     internal class TrayIndicator : IDisposable
     {
         private const int ANIMATE_TIMER_DEFAULT_INTERVAL = 200;
+        private const int CrossfadeDurationMs = 300;
+        private const int CrossfadeIntermediateSteps = 4;
         private readonly NotifyIcon notifyIcon = new();
         private readonly List<Icon> icons = [];
         private readonly Lock iconLock = new();
         private readonly FormsTimer animateTimer;
+        private readonly FormsTimer crossfadeTimer;
         private int current;
         private List<Bitmap>? sourceFrames;
         private bool ownsSourceFrames;
@@ -31,7 +34,12 @@ namespace RunCat365
         private int? tintStep;
         private int tintStrength = 100;
         private bool stillMode;
+        private bool stillCrossfadeEnabled;
         private int stillFrameIndex;
+        private int crossfadeFromIndex;
+        private int crossfadeToIndex;
+        private int crossfadeStep;
+        private Icon? crossfadeTempIcon;
         private bool disposed;
 
         internal SpeedSource SpeedSource { get; }
@@ -53,6 +61,9 @@ namespace RunCat365
                 Interval = ANIMATE_TIMER_DEFAULT_INTERVAL
             };
             animateTimer.Tick += (_, _) => AdvanceFrame();
+
+            crossfadeTimer = new FormsTimer();
+            crossfadeTimer.Tick += (_, _) => AdvanceCrossfade();
         }
 
         internal bool Visible
@@ -68,6 +79,7 @@ namespace RunCat365
                 else
                 {
                     animateTimer.Stop();
+                    CancelCrossfade(commitTarget: false);
                 }
             }
         }
@@ -170,10 +182,11 @@ namespace RunCat365
         }
 
         /// <summary>
-        /// Load a still set as themed tray icons. Animation stops; frames switch by load hard-cut.
+        /// Load a still set as themed tray icons. Animation stops; frames switch by load.
         /// </summary>
         internal void SetStillIcons(List<Bitmap> frames, Theme systemTheme, Theme manualTheme)
         {
+            CancelCrossfade(commitTarget: false);
             ClearSourceFrames();
             sourceFrames = frames.Select(f => new Bitmap(f)).ToList();
             ownsSourceFrames = true;
@@ -186,18 +199,54 @@ namespace RunCat365
             ShowStillFrame(0);
         }
 
+        internal void SetStillCrossfadeEnabled(bool enabled)
+        {
+            stillCrossfadeEnabled = enabled;
+            if (!enabled)
+            {
+                CancelCrossfade(commitTarget: true);
+            }
+        }
+
         /// <summary>
-        /// Hard-cut to the still frame for the current load band. No crossfade.
+        /// Switch to the still frame for the current load band.
+        /// Hard-cut when crossfade is off; 300ms pseudo blend when on.
         /// </summary>
         internal void SetStillFrameIndex(int index)
         {
             if (!stillMode) return;
-            ShowStillFrame(index);
+
+            int clamped;
+            lock (iconLock)
+            {
+                if (icons.Count == 0) return;
+                clamped = Math.Clamp(index, 0, icons.Count - 1);
+            }
+
+            if (!stillCrossfadeEnabled)
+            {
+                CancelCrossfade(commitTarget: false);
+                ShowStillFrame(clamped);
+                return;
+            }
+
+            if (crossfadeTimer.Enabled && crossfadeToIndex == clamped)
+            {
+                return;
+            }
+
+            if (!crossfadeTimer.Enabled && clamped == stillFrameIndex)
+            {
+                return;
+            }
+
+            StartCrossfade(stillFrameIndex, clamped);
         }
 
         internal void RecolorActiveCustomIcons(Theme systemTheme, Theme manualTheme)
         {
             if (!HasActiveCustomIcons) return;
+            CancelCrossfade(commitTarget: false);
             currentTheme = ResolveTheme(systemTheme, manualTheme);
             RebuildIconsFromSource();
             if (stillMode) ShowStillFrame(stillFrameIndex);
@@ -205,6 +254,7 @@ namespace RunCat365
 
         private void ExitStillMode()
         {
+            CancelCrossfade(commitTarget: false);
             stillMode = false;
             stillFrameIndex = 0;
         }
@@ -223,8 +273,113 @@ namespace RunCat365
             {
                 if (icons.Count == 0) return;
                 stillFrameIndex = Math.Clamp(index, 0, icons.Count - 1);
+                ClearCrossfadeTempIconLocked();
                 notifyIcon.Icon = icons[stillFrameIndex];
             }
+        }
+
+        private void StartCrossfade(int fromIndex, int toIndex)
+        {
+            lock (iconLock)
+            {
+                if (icons.Count == 0 || sourceFrames is null || sourceFrames.Count == 0) return;
+                fromIndex = Math.Clamp(fromIndex, 0, icons.Count - 1);
+                toIndex = Math.Clamp(toIndex, 0, icons.Count - 1);
+            }
+
+            if (fromIndex == toIndex)
+            {
+                CancelCrossfade(commitTarget: false);
+                ShowStillFrame(toIndex);
+                return;
+            }
+
+            crossfadeTimer.Stop();
+            crossfadeFromIndex = fromIndex;
+            crossfadeToIndex = toIndex;
+            crossfadeStep = 0;
+            // Intermediate steps + final land across 300ms (4 blends + commit).
+            crossfadeTimer.Interval = Math.Max(1, CrossfadeDurationMs / (CrossfadeIntermediateSteps + 1));
+            crossfadeTimer.Start();
+        }
+
+        private void AdvanceCrossfade()
+        {
+            crossfadeStep++;
+            if (crossfadeStep > CrossfadeIntermediateSteps)
+            {
+                crossfadeTimer.Stop();
+                ShowStillFrame(crossfadeToIndex);
+                return;
+            }
+
+            var amount = crossfadeStep / (float)(CrossfadeIntermediateSteps + 1);
+            Bitmap? fromThemed = null;
+            Bitmap? toThemed = null;
+            Bitmap? blended = null;
+            Icon? blendedIcon = null;
+            try
+            {
+                fromThemed = CreateThemedFrame(crossfadeFromIndex);
+                toThemed = CreateThemedFrame(crossfadeToIndex);
+                if (fromThemed is null || toThemed is null) return;
+                blended = fromThemed.Blend(toThemed, amount);
+                blendedIcon = blended.ToIcon();
+
+                lock (iconLock)
+                {
+                    ClearCrossfadeTempIconLocked();
+                    crossfadeTempIcon = blendedIcon;
+                    blendedIcon = null;
+                    notifyIcon.Icon = crossfadeTempIcon;
+                }
+            }
+            finally
+            {
+                blendedIcon?.Dispose();
+                blended?.Dispose();
+                fromThemed?.Dispose();
+                toThemed?.Dispose();
+            }
+        }
+
+        private Bitmap? CreateThemedFrame(int index)
+        {
+            if (sourceFrames is null || index < 0 || index >= sourceFrames.Count) return null;
+            var frame = sourceFrames[index];
+            if (currentTheme == Theme.Light)
+            {
+                return new Bitmap(frame);
+            }
+            return frame.Recolor(currentTheme.GetContrastColor());
+        }
+
+        private void CancelCrossfade(bool commitTarget)
+        {
+            var wasRunning = crossfadeTimer.Enabled;
+            crossfadeTimer.Stop();
+            if (commitTarget && wasRunning)
+            {
+                ShowStillFrame(crossfadeToIndex);
+                return;
+            }
+            lock (iconLock)
+            {
+                ClearCrossfadeTempIconLocked();
+                if (stillMode && icons.Count > 0)
+                {
+                    stillFrameIndex = Math.Clamp(stillFrameIndex, 0, icons.Count - 1);
+                    notifyIcon.Icon = icons[stillFrameIndex];
+                }
+            }
+        }
+
+        private void ClearCrossfadeTempIconLocked()
+        {
+            if (crossfadeTempIcon is null) return;
+            var temp = crossfadeTempIcon;
+            crossfadeTempIcon = null;
+            temp.Dispose();
         }
 
         private void AdvanceFrame()
@@ -290,6 +445,7 @@ namespace RunCat365
             List<Icon> oldIcons;
             lock (iconLock)
             {
+                ClearCrossfadeTempIconLocked();
                 oldIcons = new List<Icon>(icons);
                 icons.Clear();
                 icons.AddRange(list);
@@ -341,9 +497,12 @@ namespace RunCat365
             {
                 animateTimer.Stop();
                 animateTimer.Dispose();
+                crossfadeTimer.Stop();
+                crossfadeTimer.Dispose();
 
                 lock (iconLock)
                 {
+                    ClearCrossfadeTempIconLocked();
                     foreach (var icon in icons) icon.Dispose();
                     icons.Clear();
                 }

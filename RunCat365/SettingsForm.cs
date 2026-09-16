@@ -30,6 +30,7 @@ namespace RunCat365
         private readonly Action<SpeedSource, bool> setRunnerSpeedEnabled;
         private readonly Action<SpeedSource, bool> setStillModeEnabled;
         private readonly Action<SpeedSource, string> setStillSet;
+        private readonly Action<SpeedSource, bool> setStillCrossfadeEnabled;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
         private readonly CustomRunnerRepository customRunnerRepository;
@@ -51,6 +52,7 @@ namespace RunCat365
             Action<SpeedSource, bool> setRunnerSpeedEnabled,
             Action<SpeedSource, bool> setStillModeEnabled,
             Action<SpeedSource, string> setStillSet,
+            Action<SpeedSource, bool> setStillCrossfadeEnabled,
             Action<SpeedSource, string> applyCustomRunner,
             Func<SpeedSource, bool> isSpeedSourceAvailable,
             CustomRunnerRepository customRunnerRepository,
@@ -69,6 +71,7 @@ namespace RunCat365
             this.setRunnerSpeedEnabled = setRunnerSpeedEnabled;
             this.setStillModeEnabled = setStillModeEnabled;
             this.setStillSet = setStillSet;
+            this.setStillCrossfadeEnabled = setStillCrossfadeEnabled;
             this.applyCustomRunner = applyCustomRunner;
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
             this.customRunnerRepository = customRunnerRepository;
@@ -253,6 +256,17 @@ namespace RunCat365
                     return;
                 }
 
+                if (type == "setStillCrossfadeEnabled")
+                {
+                    if (!root.TryGetProperty("id", out var idElement)) return;
+                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
+                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+
+                    setStillCrossfadeEnabled(speedSource, enabledElement.GetBoolean());
+                    PostIndicatorsState();
+                    return;
+                }
+
                 if (type == "setCustomRunner")
                 {
                     if (!root.TryGetProperty("id", out var idElement)) return;
@@ -393,7 +407,8 @@ namespace RunCat365
                             colorTintStrength = config?.ColorTintStrength ?? 100,
                             runnerSpeedEnabled = config?.RunnerSpeedEnabled ?? true,
                             stillModeEnabled = config?.StillModeEnabled ?? false,
-                            stillSetName
+                            stillSetName,
+                            stillCrossfadeEnabled = config?.StillCrossfadeEnabled ?? false
                         };
                     })
                     .ToArray();

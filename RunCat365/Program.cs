@@ -103,6 +103,7 @@ namespace RunCat365
                 (source, enabled) => ChangeRunnerSpeedEnabled(source, enabled),
                 (source, enabled) => ChangeStillModeEnabled(source, enabled),
                 (source, name) => ChangeStillSet(source, name),
+                (source, enabled) => ChangeStillCrossfadeEnabled(source, enabled),
                 customRunnerRepository,
                 stillSetRepository,
                 (source, name) => ApplyCustomRunner(source, name),
@@ -152,7 +153,8 @@ namespace RunCat365
                     UserSettings.Default.CpuRunnerSpeedEnabled,
                     UserSettings.Default.CpuColorTintStrength,
                     UserSettings.Default.CpuStillModeEnabled,
-                    NullIfEmpty(UserSettings.Default.CpuStillSetName)
+                    NullIfEmpty(UserSettings.Default.CpuStillSetName),
+                    UserSettings.Default.CpuStillCrossfadeEnabled
                 );
                 indicatorConfigs[SpeedSource.GPU] = new IndicatorConfig(
                     SpeedSource.GPU,
@@ -163,7 +165,8 @@ namespace RunCat365
                     UserSettings.Default.GpuRunnerSpeedEnabled,
                     UserSettings.Default.GpuColorTintStrength,
                     UserSettings.Default.GpuStillModeEnabled,
-                    NullIfEmpty(UserSettings.Default.GpuStillSetName)
+                    NullIfEmpty(UserSettings.Default.GpuStillSetName),
+                    UserSettings.Default.GpuStillCrossfadeEnabled
                 );
                 indicatorConfigs[SpeedSource.Memory] = new IndicatorConfig(
                     SpeedSource.Memory,
@@ -174,7 +177,8 @@ namespace RunCat365
                     UserSettings.Default.MemoryRunnerSpeedEnabled,
                     UserSettings.Default.MemoryColorTintStrength,
                     UserSettings.Default.MemoryStillModeEnabled,
-                    NullIfEmpty(UserSettings.Default.MemoryStillSetName)
+                    NullIfEmpty(UserSettings.Default.MemoryStillSetName),
+                    UserSettings.Default.MemoryStillCrossfadeEnabled
                 );
                 indicatorConfigs[SpeedSource.Temperature] = new IndicatorConfig(
                     SpeedSource.Temperature,
@@ -185,7 +189,8 @@ namespace RunCat365
                     UserSettings.Default.TemperatureRunnerSpeedEnabled,
                     UserSettings.Default.TemperatureColorTintStrength,
                     UserSettings.Default.TemperatureStillModeEnabled,
-                    NullIfEmpty(UserSettings.Default.TemperatureStillSetName)
+                    NullIfEmpty(UserSettings.Default.TemperatureStillSetName),
+                    UserSettings.Default.TemperatureStillCrossfadeEnabled
                 );
             }
 
@@ -258,6 +263,7 @@ namespace RunCat365
                 UserSettings.Default.CpuColorTintStrength = cpu.ColorTintStrength;
                 UserSettings.Default.CpuStillModeEnabled = cpu.StillModeEnabled;
                 UserSettings.Default.CpuStillSetName = cpu.StillSetName ?? string.Empty;
+                UserSettings.Default.CpuStillCrossfadeEnabled = cpu.StillCrossfadeEnabled;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.GPU, out var gpu))
             {
@@ -269,6 +275,7 @@ namespace RunCat365
                 UserSettings.Default.GpuColorTintStrength = gpu.ColorTintStrength;
                 UserSettings.Default.GpuStillModeEnabled = gpu.StillModeEnabled;
                 UserSettings.Default.GpuStillSetName = gpu.StillSetName ?? string.Empty;
+                UserSettings.Default.GpuStillCrossfadeEnabled = gpu.StillCrossfadeEnabled;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.Memory, out var memory))
             {
@@ -280,6 +287,7 @@ namespace RunCat365
                 UserSettings.Default.MemoryColorTintStrength = memory.ColorTintStrength;
                 UserSettings.Default.MemoryStillModeEnabled = memory.StillModeEnabled;
                 UserSettings.Default.MemoryStillSetName = memory.StillSetName ?? string.Empty;
+                UserSettings.Default.MemoryStillCrossfadeEnabled = memory.StillCrossfadeEnabled;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.Temperature, out var temperature))
             {
@@ -291,6 +299,7 @@ namespace RunCat365
                 UserSettings.Default.TemperatureColorTintStrength = temperature.ColorTintStrength;
                 UserSettings.Default.TemperatureStillModeEnabled = temperature.StillModeEnabled;
                 UserSettings.Default.TemperatureStillSetName = temperature.StillSetName ?? string.Empty;
+                UserSettings.Default.TemperatureStillCrossfadeEnabled = temperature.StillCrossfadeEnabled;
             }
             UserSettings.Default.IndicatorsMigrated = true;
             UserSettings.Default.Save();
@@ -473,12 +482,22 @@ namespace RunCat365
                 config.ColorTintEnabled = false;
                 contextMenuManager.SetIndicatorLoadTint(source, null);
                 ApplyIconsForConfig(config);
+                contextMenuManager.SetIndicatorStillCrossfadeEnabled(source, config.StillCrossfadeEnabled);
             }
             else
             {
                 EnsureDisplayMode(config);
                 ApplyIconsForConfig(config);
             }
+            SaveIndicatorSettings();
+        }
+
+
+        private void ChangeStillCrossfadeEnabled(SpeedSource source, bool enabled)
+        {
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            config.StillCrossfadeEnabled = enabled;
+            contextMenuManager.SetIndicatorStillCrossfadeEnabled(source, enabled);
             SaveIndicatorSettings();
         }
 
@@ -542,6 +561,7 @@ namespace RunCat365
             if (frames.Count == 0) return;
             config.StillSetName = name;
             contextMenuManager.ApplyStillIcons(source, frames, GetSystemTheme(), manualTheme);
+            contextMenuManager.SetIndicatorStillCrossfadeEnabled(source, config.StillCrossfadeEnabled);
             foreach (var frame in frames) frame.Dispose();
         }
 

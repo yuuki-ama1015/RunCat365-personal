@@ -96,6 +96,8 @@ namespace RunCat365
                 () => indicatorConfigs,
                 (source, enabled) => ChangeIndicatorEnabled(source, enabled),
                 (source, runner) => ChangeIndicatorRunner(source, runner),
+                (source, enabled) => ChangeColorTintEnabled(source, enabled),
+                (source, enabled) => ChangeRunnerSpeedEnabled(source, enabled),
                 customRunnerRepository,
                 (source, name) => ApplyCustomRunner(source, name),
                 deletedName => HandleCustomRunnerDeleted(deletedName),
@@ -138,25 +140,33 @@ namespace RunCat365
                     SpeedSource.CPU,
                     UserSettings.Default.CpuIndicatorEnabled,
                     ParseRunner(UserSettings.Default.CpuRunner, Runner.Cat),
-                    NullIfEmpty(UserSettings.Default.CpuCustomRunnerName)
+                    NullIfEmpty(UserSettings.Default.CpuCustomRunnerName),
+                    UserSettings.Default.CpuColorTintEnabled,
+                    UserSettings.Default.CpuRunnerSpeedEnabled
                 );
                 indicatorConfigs[SpeedSource.GPU] = new IndicatorConfig(
                     SpeedSource.GPU,
                     UserSettings.Default.GpuIndicatorEnabled,
                     ParseRunner(UserSettings.Default.GpuRunner, Runner.Parrot),
-                    NullIfEmpty(UserSettings.Default.GpuCustomRunnerName)
+                    NullIfEmpty(UserSettings.Default.GpuCustomRunnerName),
+                    UserSettings.Default.GpuColorTintEnabled,
+                    UserSettings.Default.GpuRunnerSpeedEnabled
                 );
                 indicatorConfigs[SpeedSource.Memory] = new IndicatorConfig(
                     SpeedSource.Memory,
                     UserSettings.Default.MemoryIndicatorEnabled,
                     ParseRunner(UserSettings.Default.MemoryRunner, Runner.Horse),
-                    NullIfEmpty(UserSettings.Default.MemoryCustomRunnerName)
+                    NullIfEmpty(UserSettings.Default.MemoryCustomRunnerName),
+                    UserSettings.Default.MemoryColorTintEnabled,
+                    UserSettings.Default.MemoryRunnerSpeedEnabled
                 );
                 indicatorConfigs[SpeedSource.Temperature] = new IndicatorConfig(
                     SpeedSource.Temperature,
                     UserSettings.Default.TemperatureIndicatorEnabled,
                     ParseRunner(UserSettings.Default.TemperatureRunner, Runner.Cat),
-                    NullIfEmpty(UserSettings.Default.TemperatureCustomRunnerName)
+                    NullIfEmpty(UserSettings.Default.TemperatureCustomRunnerName),
+                    UserSettings.Default.TemperatureColorTintEnabled,
+                    UserSettings.Default.TemperatureRunnerSpeedEnabled
                 );
             }
 
@@ -166,6 +176,7 @@ namespace RunCat365
                 {
                     config.Enabled = false;
                 }
+                EnsureRunnerOrTint(config);
             }
 
             EnsureAtLeastOneEnabled();
@@ -223,24 +234,32 @@ namespace RunCat365
                 UserSettings.Default.CpuIndicatorEnabled = cpu.Enabled;
                 UserSettings.Default.CpuRunner = cpu.Runner.ToString();
                 UserSettings.Default.CpuCustomRunnerName = cpu.CustomRunnerName ?? string.Empty;
+                UserSettings.Default.CpuColorTintEnabled = cpu.ColorTintEnabled;
+                UserSettings.Default.CpuRunnerSpeedEnabled = cpu.RunnerSpeedEnabled;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.GPU, out var gpu))
             {
                 UserSettings.Default.GpuIndicatorEnabled = gpu.Enabled;
                 UserSettings.Default.GpuRunner = gpu.Runner.ToString();
                 UserSettings.Default.GpuCustomRunnerName = gpu.CustomRunnerName ?? string.Empty;
+                UserSettings.Default.GpuColorTintEnabled = gpu.ColorTintEnabled;
+                UserSettings.Default.GpuRunnerSpeedEnabled = gpu.RunnerSpeedEnabled;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.Memory, out var memory))
             {
                 UserSettings.Default.MemoryIndicatorEnabled = memory.Enabled;
                 UserSettings.Default.MemoryRunner = memory.Runner.ToString();
                 UserSettings.Default.MemoryCustomRunnerName = memory.CustomRunnerName ?? string.Empty;
+                UserSettings.Default.MemoryColorTintEnabled = memory.ColorTintEnabled;
+                UserSettings.Default.MemoryRunnerSpeedEnabled = memory.RunnerSpeedEnabled;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.Temperature, out var temperature))
             {
                 UserSettings.Default.TemperatureIndicatorEnabled = temperature.Enabled;
                 UserSettings.Default.TemperatureRunner = temperature.Runner.ToString();
                 UserSettings.Default.TemperatureCustomRunnerName = temperature.CustomRunnerName ?? string.Empty;
+                UserSettings.Default.TemperatureColorTintEnabled = temperature.ColorTintEnabled;
+                UserSettings.Default.TemperatureRunnerSpeedEnabled = temperature.RunnerSpeedEnabled;
             }
             UserSettings.Default.IndicatorsMigrated = true;
             UserSettings.Default.Save();
@@ -358,6 +377,39 @@ namespace RunCat365
             config.CustomRunnerName = null;
             SaveIndicatorSettings();
             contextMenuManager.ApplyBuiltInIcons(source, GetSystemTheme(), manualTheme, runner);
+        }
+
+        private void ChangeColorTintEnabled(SpeedSource source, bool enabled)
+        {
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            config.ColorTintEnabled = enabled;
+            EnsureRunnerOrTint(config);
+            SaveIndicatorSettings();
+            if (!config.ColorTintEnabled)
+            {
+                contextMenuManager.SetIndicatorLoadTint(source, null);
+            }
+            else
+            {
+                // Placeholder until the next fetch applies the real load step.
+                contextMenuManager.SetIndicatorLoadTint(source, 0);
+            }
+        }
+
+        private void ChangeRunnerSpeedEnabled(SpeedSource source, bool enabled)
+        {
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            config.RunnerSpeedEnabled = enabled;
+            EnsureRunnerOrTint(config);
+            SaveIndicatorSettings();
+        }
+
+        private static void EnsureRunnerOrTint(IndicatorConfig config)
+        {
+            if (config.Enabled && !config.RunnerSpeedEnabled && !config.ColorTintEnabled)
+            {
+                config.RunnerSpeedEnabled = true;
+            }
         }
 
         private void ApplyCustomRunner(SpeedSource source, string name)
@@ -522,7 +574,42 @@ namespace RunCat365
                 contextMenuManager.SetIndicatorText(config.SpeedSource, description);
 
                 var load = GetLoad(config.SpeedSource, cpuInfo, gpuInfo, memoryInfo, temperatureInfo);
-                contextMenuManager.SetIndicatorInterval(config.SpeedSource, CalculateInterval(load));
+
+                var forced = false;
+                if (config.Enabled && !config.RunnerSpeedEnabled && !config.ColorTintEnabled)
+                {
+                    config.RunnerSpeedEnabled = true;
+                    forced = true;
+                }
+                if (forced) SaveIndicatorSettings();
+
+                int interval;
+                if (config.RunnerSpeedEnabled)
+                {
+                    interval = CalculateInterval(load);
+                }
+                else if (config.ColorTintEnabled)
+                {
+                    // Idle / very-low-load animation when only tint is active.
+                    interval = CalculateInterval(0f);
+                }
+                else
+                {
+                    interval = CalculateInterval(load);
+                }
+                contextMenuManager.SetIndicatorInterval(config.SpeedSource, interval);
+
+                if (config.ColorTintEnabled)
+                {
+                    contextMenuManager.SetIndicatorLoadTint(
+                        config.SpeedSource,
+                        BitmapExtension.LoadToTintStep(load)
+                    );
+                }
+                else
+                {
+                    contextMenuManager.SetIndicatorLoadTint(config.SpeedSource, null);
+                }
             }
 
             var systemInfoValues = new List<string>();

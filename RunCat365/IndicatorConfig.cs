@@ -20,13 +20,24 @@ namespace RunCat365
         internal bool Enabled { get; set; }
         internal Runner Runner { get; set; }
         internal string? CustomRunnerName { get; set; }
+        internal bool ColorTintEnabled { get; set; }
+        internal bool RunnerSpeedEnabled { get; set; }
 
-        internal IndicatorConfig(SpeedSource speedSource, bool enabled, Runner runner, string? customRunnerName)
+        internal IndicatorConfig(
+            SpeedSource speedSource,
+            bool enabled,
+            Runner runner,
+            string? customRunnerName,
+            bool colorTintEnabled = false,
+            bool runnerSpeedEnabled = true
+        )
         {
             SpeedSource = speedSource;
             Enabled = enabled;
             Runner = runner;
             CustomRunnerName = customRunnerName;
+            ColorTintEnabled = colorTintEnabled;
+            RunnerSpeedEnabled = runnerSpeedEnabled;
         }
 
         internal static Runner DefaultRunnerFor(SpeedSource speedSource)

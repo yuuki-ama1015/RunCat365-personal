@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Takuto Nakamura
+// Copyright 2025 Takuto Nakamura
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -39,6 +39,16 @@ namespace RunCat365
 
     internal static class BitmapExtension
     {
+        private const int LoadTintStepCount = 16;
+        private const float LoadTintMaxAlpha = 0.72f;
+        private static readonly Color LoadTintColor = Color.FromArgb(0xE5, 0x39, 0x35);
+
+        internal static int LoadToTintStep(float load)
+        {
+            var clamped = Math.Clamp(load, 0f, 100f);
+            return Math.Min(LoadTintStepCount - 1, (int)(clamped / 100f * LoadTintStepCount));
+        }
+
         internal static Bitmap Recolor(this Bitmap bitmap, Color color)
         {
             var newBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format32bppArgb);
@@ -65,6 +75,59 @@ namespace RunCat365
                         dstPixel[1] = color.G;
                         dstPixel[2] = color.R;
                         dstPixel[3] = srcPixel[3];
+                    }
+                }
+            }
+
+            return newBitmap;
+        }
+
+        /// <summary>
+        /// Overlay translucent #E53935 on the theme-resolved frame.
+        /// Alpha scales with step/15, muted so step 15 is clearly red but not opaque.
+        /// </summary>
+        internal static Bitmap ApplyLoadTint(this Bitmap bitmap, int step)
+        {
+            var clampedStep = Math.Clamp(step, 0, LoadTintStepCount - 1);
+            var tintAlpha = clampedStep / (float)(LoadTintStepCount - 1) * LoadTintMaxAlpha;
+            var newBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format32bppArgb);
+
+            using var srcLock = new BitmapLock(bitmap, ImageLockMode.ReadOnly);
+            using var dstLock = new BitmapLock(newBitmap, ImageLockMode.WriteOnly);
+
+            unsafe
+            {
+                byte* srcPtr = (byte*)srcLock.Data.Scan0;
+                byte* dstPtr = (byte*)dstLock.Data.Scan0;
+                float inv = 1f - tintAlpha;
+                float tr = LoadTintColor.R * tintAlpha;
+                float tg = LoadTintColor.G * tintAlpha;
+                float tb = LoadTintColor.B * tintAlpha;
+
+                for (int y = 0; y < bitmap.Height; y++)
+                {
+                    byte* srcRow = srcPtr + (y * srcLock.Data.Stride);
+                    byte* dstRow = dstPtr + (y * dstLock.Data.Stride);
+
+                    for (int x = 0; x < bitmap.Width; x++)
+                    {
+                        byte* srcPixel = srcRow + (x * 4);
+                        byte* dstPixel = dstRow + (x * 4);
+
+                        byte a = srcPixel[3];
+                        if (a == 0)
+                        {
+                            dstPixel[0] = 0;
+                            dstPixel[1] = 0;
+                            dstPixel[2] = 0;
+                            dstPixel[3] = 0;
+                            continue;
+                        }
+
+                        dstPixel[0] = (byte)(srcPixel[0] * inv + tb);
+                        dstPixel[1] = (byte)(srcPixel[1] * inv + tg);
+                        dstPixel[2] = (byte)(srcPixel[2] * inv + tr);
+                        dstPixel[3] = a;
                     }
                 }
             }

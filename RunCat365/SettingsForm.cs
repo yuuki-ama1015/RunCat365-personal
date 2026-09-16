@@ -25,6 +25,8 @@ namespace RunCat365
         private readonly Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs;
         private readonly Action<SpeedSource, bool> setIndicatorEnabled;
         private readonly Action<SpeedSource, Runner> setIndicatorRunner;
+        private readonly Action<SpeedSource, bool> setColorTintEnabled;
+        private readonly Action<SpeedSource, bool> setRunnerSpeedEnabled;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
         private readonly CustomRunnerRepository customRunnerRepository;
@@ -38,6 +40,8 @@ namespace RunCat365
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
             Action<SpeedSource, bool> setIndicatorEnabled,
             Action<SpeedSource, Runner> setIndicatorRunner,
+            Action<SpeedSource, bool> setColorTintEnabled,
+            Action<SpeedSource, bool> setRunnerSpeedEnabled,
             Action<SpeedSource, string> applyCustomRunner,
             Func<SpeedSource, bool> isSpeedSourceAvailable,
             CustomRunnerRepository customRunnerRepository,
@@ -48,6 +52,8 @@ namespace RunCat365
             this.getConfigs = getConfigs;
             this.setIndicatorEnabled = setIndicatorEnabled;
             this.setIndicatorRunner = setIndicatorRunner;
+            this.setColorTintEnabled = setColorTintEnabled;
+            this.setRunnerSpeedEnabled = setRunnerSpeedEnabled;
             this.applyCustomRunner = applyCustomRunner;
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
             this.customRunnerRepository = customRunnerRepository;
@@ -171,6 +177,28 @@ namespace RunCat365
                     return;
                 }
 
+                if (type == "setColorTintEnabled")
+                {
+                    if (!root.TryGetProperty("id", out var idElement)) return;
+                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
+                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+
+                    setColorTintEnabled(speedSource, enabledElement.GetBoolean());
+                    PostIndicatorsState();
+                    return;
+                }
+
+                if (type == "setRunnerSpeedEnabled")
+                {
+                    if (!root.TryGetProperty("id", out var idElement)) return;
+                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
+                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+
+                    setRunnerSpeedEnabled(speedSource, enabledElement.GetBoolean());
+                    PostIndicatorsState();
+                    return;
+                }
+
                 if (type == "setCustomRunner")
                 {
                     if (!root.TryGetProperty("id", out var idElement)) return;
@@ -267,7 +295,9 @@ namespace RunCat365
                             enabled,
                             available,
                             runner,
-                            customRunnerName
+                            customRunnerName,
+                            colorTintEnabled = config?.ColorTintEnabled ?? false,
+                            runnerSpeedEnabled = config?.RunnerSpeedEnabled ?? true
                         };
                     })
                     .ToArray();

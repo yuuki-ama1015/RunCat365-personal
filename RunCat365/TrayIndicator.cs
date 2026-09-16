@@ -25,7 +25,10 @@ namespace RunCat365
         private readonly Lock iconLock = new();
         private readonly FormsTimer animateTimer;
         private int current;
-        private List<Bitmap>? customRunnerSourceFrames;
+        private List<Bitmap>? sourceFrames;
+        private bool ownsSourceFrames;
+        private Theme currentTheme = Theme.Light;
+        private int? tintStep;
         private bool disposed;
 
         internal SpeedSource SpeedSource { get; }
@@ -66,7 +69,7 @@ namespace RunCat365
             }
         }
 
-        internal bool HasActiveCustomIcons => customRunnerSourceFrames is not null;
+        internal bool HasActiveCustomIcons => ownsSourceFrames && sourceFrames is not null;
 
         internal void SetText(string text)
         {
@@ -87,9 +90,21 @@ namespace RunCat365
             notifyIcon.ShowBalloonTip(timeout, tipTitle, tipText, tipIcon);
         }
 
+        /// <summary>
+        /// Apply or clear load tint. Rebuilds icons only when the step changes.
+        /// Pass null to disable tint.
+        /// </summary>
+        internal void SetLoadTintStep(int? step)
+        {
+            int? normalized = step is null ? null : Math.Clamp(step.Value, 0, 15);
+            if (Nullable.Equals(tintStep, normalized)) return;
+            tintStep = normalized;
+            RebuildIconsFromSource();
+        }
+
         internal void SetIcons(Theme systemTheme, Theme manualTheme, Runner runner)
         {
-            ClearCustomRunnerSourceFrames();
+            ClearSourceFrames();
 
             var runnerName = runner.GetString();
             var rm = Resources.ResourceManager;
@@ -103,20 +118,26 @@ namespace RunCat365
                     bitmaps.Add(bitmap);
                 }
             }
-            ReplaceIconList(bitmaps, ResolveTheme(systemTheme, manualTheme));
+            sourceFrames = bitmaps;
+            ownsSourceFrames = false;
+            currentTheme = ResolveTheme(systemTheme, manualTheme);
+            RebuildIconsFromSource();
         }
 
         internal void SetCustomIcons(List<Bitmap> frames, Theme systemTheme, Theme manualTheme)
         {
-            ClearCustomRunnerSourceFrames();
-            customRunnerSourceFrames = frames.Select(f => new Bitmap(f)).ToList();
-            ReplaceIconList(customRunnerSourceFrames, ResolveTheme(systemTheme, manualTheme));
+            ClearSourceFrames();
+            sourceFrames = frames.Select(f => new Bitmap(f)).ToList();
+            ownsSourceFrames = true;
+            currentTheme = ResolveTheme(systemTheme, manualTheme);
+            RebuildIconsFromSource();
         }
 
         internal void RecolorActiveCustomIcons(Theme systemTheme, Theme manualTheme)
         {
-            if (customRunnerSourceFrames is null) return;
-            ReplaceIconList(customRunnerSourceFrames, ResolveTheme(systemTheme, manualTheme));
+            if (!HasActiveCustomIcons) return;
+            currentTheme = ResolveTheme(systemTheme, manualTheme);
+            RebuildIconsFromSource();
         }
 
         private void AdvanceFrame()
@@ -130,23 +151,54 @@ namespace RunCat365
             }
         }
 
-        private void ReplaceIconList(IList<Bitmap> frames, Theme theme)
+        private void RebuildIconsFromSource()
         {
-            var color = theme.GetContrastColor();
-            var list = new List<Icon>(frames.Count);
-            foreach (var frame in frames)
+            if (sourceFrames is null || sourceFrames.Count == 0)
             {
-                if (theme == Theme.Light)
+                ReplaceIconList([]);
+                return;
+            }
+
+            var color = currentTheme.GetContrastColor();
+            var list = new List<Icon>(sourceFrames.Count);
+            foreach (var frame in sourceFrames)
+            {
+                Bitmap themed;
+                bool disposeThemed;
+                if (currentTheme == Theme.Light)
                 {
-                    list.Add(frame.ToIcon());
+                    themed = frame;
+                    disposeThemed = false;
                 }
                 else
                 {
-                    using var recolored = frame.Recolor(color);
-                    list.Add(recolored.ToIcon());
+                    themed = frame.Recolor(color);
+                    disposeThemed = true;
+                }
+
+                try
+                {
+                    if (tintStep is int step)
+                    {
+                        using var tinted = themed.ApplyLoadTint(step);
+                        list.Add(tinted.ToIcon());
+                    }
+                    else
+                    {
+                        list.Add(themed.ToIcon());
+                    }
+                }
+                finally
+                {
+                    if (disposeThemed) themed.Dispose();
                 }
             }
 
+            ReplaceIconList(list);
+        }
+
+        private void ReplaceIconList(List<Icon> list)
+        {
             List<Icon> oldIcons;
             lock (iconLock)
             {
@@ -164,11 +216,15 @@ namespace RunCat365
             foreach (var icon in oldIcons) icon.Dispose();
         }
 
-        private void ClearCustomRunnerSourceFrames()
+        private void ClearSourceFrames()
         {
-            if (customRunnerSourceFrames is null) return;
-            foreach (var bitmap in customRunnerSourceFrames) bitmap.Dispose();
-            customRunnerSourceFrames = null;
+            if (sourceFrames is null) return;
+            if (ownsSourceFrames)
+            {
+                foreach (var bitmap in sourceFrames) bitmap.Dispose();
+            }
+            sourceFrames = null;
+            ownsSourceFrames = false;
         }
 
         private static Theme ResolveTheme(Theme systemTheme, Theme manualTheme)
@@ -196,7 +252,7 @@ namespace RunCat365
                     icons.Clear();
                 }
 
-                ClearCustomRunnerSourceFrames();
+                ClearSourceFrames();
                 notifyIcon.Visible = false;
                 notifyIcon.Dispose();
             }

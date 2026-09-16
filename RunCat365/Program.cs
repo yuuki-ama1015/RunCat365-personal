@@ -97,6 +97,7 @@ namespace RunCat365
                 (source, enabled) => ChangeIndicatorEnabled(source, enabled),
                 (source, runner) => ChangeIndicatorRunner(source, runner),
                 (source, enabled) => ChangeColorTintEnabled(source, enabled),
+                (source, strength) => ChangeColorTintStrength(source, strength),
                 (source, enabled) => ChangeRunnerSpeedEnabled(source, enabled),
                 customRunnerRepository,
                 (source, name) => ApplyCustomRunner(source, name),
@@ -142,7 +143,8 @@ namespace RunCat365
                     ParseRunner(UserSettings.Default.CpuRunner, Runner.Cat),
                     NullIfEmpty(UserSettings.Default.CpuCustomRunnerName),
                     UserSettings.Default.CpuColorTintEnabled,
-                    UserSettings.Default.CpuRunnerSpeedEnabled
+                    UserSettings.Default.CpuRunnerSpeedEnabled,
+                    UserSettings.Default.CpuColorTintStrength
                 );
                 indicatorConfigs[SpeedSource.GPU] = new IndicatorConfig(
                     SpeedSource.GPU,
@@ -150,7 +152,8 @@ namespace RunCat365
                     ParseRunner(UserSettings.Default.GpuRunner, Runner.Parrot),
                     NullIfEmpty(UserSettings.Default.GpuCustomRunnerName),
                     UserSettings.Default.GpuColorTintEnabled,
-                    UserSettings.Default.GpuRunnerSpeedEnabled
+                    UserSettings.Default.GpuRunnerSpeedEnabled,
+                    UserSettings.Default.GpuColorTintStrength
                 );
                 indicatorConfigs[SpeedSource.Memory] = new IndicatorConfig(
                     SpeedSource.Memory,
@@ -158,7 +161,8 @@ namespace RunCat365
                     ParseRunner(UserSettings.Default.MemoryRunner, Runner.Horse),
                     NullIfEmpty(UserSettings.Default.MemoryCustomRunnerName),
                     UserSettings.Default.MemoryColorTintEnabled,
-                    UserSettings.Default.MemoryRunnerSpeedEnabled
+                    UserSettings.Default.MemoryRunnerSpeedEnabled,
+                    UserSettings.Default.MemoryColorTintStrength
                 );
                 indicatorConfigs[SpeedSource.Temperature] = new IndicatorConfig(
                     SpeedSource.Temperature,
@@ -166,7 +170,8 @@ namespace RunCat365
                     ParseRunner(UserSettings.Default.TemperatureRunner, Runner.Cat),
                     NullIfEmpty(UserSettings.Default.TemperatureCustomRunnerName),
                     UserSettings.Default.TemperatureColorTintEnabled,
-                    UserSettings.Default.TemperatureRunnerSpeedEnabled
+                    UserSettings.Default.TemperatureRunnerSpeedEnabled,
+                    UserSettings.Default.TemperatureColorTintStrength
                 );
             }
 
@@ -236,6 +241,7 @@ namespace RunCat365
                 UserSettings.Default.CpuCustomRunnerName = cpu.CustomRunnerName ?? string.Empty;
                 UserSettings.Default.CpuColorTintEnabled = cpu.ColorTintEnabled;
                 UserSettings.Default.CpuRunnerSpeedEnabled = cpu.RunnerSpeedEnabled;
+                UserSettings.Default.CpuColorTintStrength = cpu.ColorTintStrength;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.GPU, out var gpu))
             {
@@ -244,6 +250,7 @@ namespace RunCat365
                 UserSettings.Default.GpuCustomRunnerName = gpu.CustomRunnerName ?? string.Empty;
                 UserSettings.Default.GpuColorTintEnabled = gpu.ColorTintEnabled;
                 UserSettings.Default.GpuRunnerSpeedEnabled = gpu.RunnerSpeedEnabled;
+                UserSettings.Default.GpuColorTintStrength = gpu.ColorTintStrength;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.Memory, out var memory))
             {
@@ -252,6 +259,7 @@ namespace RunCat365
                 UserSettings.Default.MemoryCustomRunnerName = memory.CustomRunnerName ?? string.Empty;
                 UserSettings.Default.MemoryColorTintEnabled = memory.ColorTintEnabled;
                 UserSettings.Default.MemoryRunnerSpeedEnabled = memory.RunnerSpeedEnabled;
+                UserSettings.Default.MemoryColorTintStrength = memory.ColorTintStrength;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.Temperature, out var temperature))
             {
@@ -260,6 +268,7 @@ namespace RunCat365
                 UserSettings.Default.TemperatureCustomRunnerName = temperature.CustomRunnerName ?? string.Empty;
                 UserSettings.Default.TemperatureColorTintEnabled = temperature.ColorTintEnabled;
                 UserSettings.Default.TemperatureRunnerSpeedEnabled = temperature.RunnerSpeedEnabled;
+                UserSettings.Default.TemperatureColorTintStrength = temperature.ColorTintStrength;
             }
             UserSettings.Default.IndicatorsMigrated = true;
             UserSettings.Default.Save();
@@ -392,7 +401,18 @@ namespace RunCat365
             else
             {
                 // Placeholder until the next fetch applies the real load step.
-                contextMenuManager.SetIndicatorLoadTint(source, 0);
+                contextMenuManager.SetIndicatorLoadTint(source, 0, config.ColorTintStrength);
+            }
+        }
+
+        private void ChangeColorTintStrength(SpeedSource source, int strength)
+        {
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            config.ColorTintStrength = Math.Clamp(strength, 0, 100);
+            SaveIndicatorSettings();
+            if (config.ColorTintEnabled)
+            {
+                contextMenuManager.SetIndicatorLoadTintStrength(source, config.ColorTintStrength);
             }
         }
 
@@ -603,7 +623,8 @@ namespace RunCat365
                 {
                     contextMenuManager.SetIndicatorLoadTint(
                         config.SpeedSource,
-                        BitmapExtension.LoadToTintStep(load)
+                        BitmapExtension.LoadToTintStep(load),
+                        config.ColorTintStrength
                     );
                 }
                 else

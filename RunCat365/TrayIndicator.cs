@@ -29,6 +29,7 @@ namespace RunCat365
         private bool ownsSourceFrames;
         private Theme currentTheme = Theme.Light;
         private int? tintStep;
+        private int tintStrength = 100;
         private bool disposed;
 
         internal SpeedSource SpeedSource { get; }
@@ -91,15 +92,28 @@ namespace RunCat365
         }
 
         /// <summary>
-        /// Apply or clear load tint. Rebuilds icons only when the step changes.
-        /// Pass null to disable tint.
+        /// Apply or clear load tint. Rebuilds icons only when the step or strength changes.
+        /// Pass null step to disable tint. Strength is 0–100 (default 100).
         /// </summary>
-        internal void SetLoadTintStep(int? step)
+        internal void SetLoadTintStep(int? step, int strength = 100)
         {
             int? normalized = step is null ? null : Math.Clamp(step.Value, 0, 15);
-            if (Nullable.Equals(tintStep, normalized)) return;
+            var normalizedStrength = Math.Clamp(strength, 0, 100);
+            if (Nullable.Equals(tintStep, normalized) && tintStrength == normalizedStrength) return;
             tintStep = normalized;
+            tintStrength = normalizedStrength;
             RebuildIconsFromSource();
+        }
+
+        /// <summary>
+        /// Update tint strength only. Rebuilds when tint is active.
+        /// </summary>
+        internal void SetLoadTintStrength(int strength)
+        {
+            var normalizedStrength = Math.Clamp(strength, 0, 100);
+            if (tintStrength == normalizedStrength) return;
+            tintStrength = normalizedStrength;
+            if (tintStep is not null) RebuildIconsFromSource();
         }
 
         internal void SetIcons(Theme systemTheme, Theme manualTheme, Runner runner)
@@ -180,7 +194,7 @@ namespace RunCat365
                 {
                     if (tintStep is int step)
                     {
-                        using var tinted = themed.ApplyLoadTint(step);
+                        using var tinted = themed.ApplyLoadTint(step, tintStrength);
                         list.Add(tinted.ToIcon());
                     }
                     else

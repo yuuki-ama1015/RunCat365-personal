@@ -26,6 +26,7 @@ namespace RunCat365
         private readonly Action<SpeedSource, bool> setIndicatorEnabled;
         private readonly Action<SpeedSource, Runner> setIndicatorRunner;
         private readonly Action<SpeedSource, bool> setColorTintEnabled;
+        private readonly Action<SpeedSource, int> setColorTintStrength;
         private readonly Action<SpeedSource, bool> setRunnerSpeedEnabled;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
@@ -41,6 +42,7 @@ namespace RunCat365
             Action<SpeedSource, bool> setIndicatorEnabled,
             Action<SpeedSource, Runner> setIndicatorRunner,
             Action<SpeedSource, bool> setColorTintEnabled,
+            Action<SpeedSource, int> setColorTintStrength,
             Action<SpeedSource, bool> setRunnerSpeedEnabled,
             Action<SpeedSource, string> applyCustomRunner,
             Func<SpeedSource, bool> isSpeedSourceAvailable,
@@ -53,6 +55,7 @@ namespace RunCat365
             this.setIndicatorEnabled = setIndicatorEnabled;
             this.setIndicatorRunner = setIndicatorRunner;
             this.setColorTintEnabled = setColorTintEnabled;
+            this.setColorTintStrength = setColorTintStrength;
             this.setRunnerSpeedEnabled = setRunnerSpeedEnabled;
             this.applyCustomRunner = applyCustomRunner;
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
@@ -188,6 +191,17 @@ namespace RunCat365
                     return;
                 }
 
+                if (type == "setColorTintStrength")
+                {
+                    if (!root.TryGetProperty("id", out var idElement)) return;
+                    if (!root.TryGetProperty("strength", out var strengthElement)) return;
+                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+
+                    setColorTintStrength(speedSource, strengthElement.GetInt32());
+                    PostIndicatorsState();
+                    return;
+                }
+
                 if (type == "setRunnerSpeedEnabled")
                 {
                     if (!root.TryGetProperty("id", out var idElement)) return;
@@ -297,6 +311,7 @@ namespace RunCat365
                             runner,
                             customRunnerName,
                             colorTintEnabled = config?.ColorTintEnabled ?? false,
+                            colorTintStrength = config?.ColorTintStrength ?? 100,
                             runnerSpeedEnabled = config?.RunnerSpeedEnabled ?? true
                         };
                     })

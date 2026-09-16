@@ -10,7 +10,7 @@
   const app = document.querySelector(".app");
   const toggle = document.getElementById("sidebar-toggle");
 
-  /** @type {Record<string, { id: string, enabled: boolean, available: boolean, runner: string, customRunnerName: string|null, colorTintEnabled: boolean, runnerSpeedEnabled: boolean }>} */
+  /** @type {Record<string, { id: string, enabled: boolean, available: boolean, runner: string, customRunnerName: string|null, colorTintEnabled: boolean, colorTintStrength: number, runnerSpeedEnabled: boolean }>} */
   let indicatorState = {};
 
   /** @type {{ builtin: Array<{ id: string, label: string }>, custom: Array<{ name: string, frameCount?: number }> }} */
@@ -103,6 +103,12 @@
       .replace(/"/g, "&quot;");
   }
 
+  function clampStrength(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 100;
+    return Math.max(0, Math.min(100, Math.round(n)));
+  }
+
   function applyIndicatorState(items, runners) {
     if (runners && Array.isArray(runners.builtin)) {
       runnersCatalog = {
@@ -121,6 +127,7 @@
         runner: item.runner || "Cat",
         customRunnerName: item.customRunnerName || null,
         colorTintEnabled: !!item.colorTintEnabled,
+        colorTintStrength: clampStrength(item.colorTintStrength),
         runnerSpeedEnabled: item.runnerSpeedEnabled !== false,
       };
     });
@@ -197,6 +204,16 @@
         state.colorTintEnabled ? "true" : "false"
       );
       tintChip.classList.toggle("mode-chip-muted", !state.colorTintEnabled);
+    }
+
+    const strengthSlider = view.querySelector("#tint-strength");
+    const strengthValue = view.querySelector("[data-tint-strength-value]");
+    if (strengthSlider instanceof HTMLInputElement) {
+      strengthSlider.disabled = !state.colorTintEnabled;
+      strengthSlider.value = String(state.colorTintStrength);
+    }
+    if (strengthValue) {
+      strengthValue.textContent = String(state.colorTintStrength);
     }
   }
 
@@ -325,6 +342,10 @@
               ランナーと色の変化を組み合わせて使えます。色の変化は負荷に応じて赤くなります。<br />
               静止画モードはまだ未接続のため保存されません。
             </p>
+            <div class="field-row tint-strength-row">
+              <label for="tint-strength">濃さ <span data-tint-strength-value>${state ? clampStrength(state.colorTintStrength) : 100}</span></label>
+              <input type="range" id="tint-strength" min="0" max="100" value="${state ? clampStrength(state.colorTintStrength) : 100}"${state && state.colorTintEnabled ? "" : " disabled"} />
+            </div>
           </section>
 
           <section class="section">
@@ -392,6 +413,22 @@
           type: "setColorTintEnabled",
           id,
           enabled: !pressed,
+        });
+      });
+    }
+
+    const strengthSlider = view.querySelector("#tint-strength");
+    const strengthValue = view.querySelector("[data-tint-strength-value]");
+    if (strengthSlider instanceof HTMLInputElement) {
+      strengthSlider.addEventListener("input", () => {
+        if (strengthValue) strengthValue.textContent = strengthSlider.value;
+      });
+      strengthSlider.addEventListener("change", () => {
+        if (strengthSlider.disabled) return;
+        postHost({
+          type: "setColorTintStrength",
+          id,
+          strength: clampStrength(strengthSlider.value),
         });
       });
     }

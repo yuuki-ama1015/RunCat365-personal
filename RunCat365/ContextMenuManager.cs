@@ -29,6 +29,7 @@ namespace RunCat365
         private readonly Action<SpeedSource, bool> setIndicatorEnabled;
         private readonly Action<SpeedSource, Runner> setIndicatorRunner;
         private readonly Action<SpeedSource, bool> setColorTintEnabled;
+        private readonly Action<SpeedSource, int> setColorTintStrength;
         private readonly Action<SpeedSource, bool> setRunnerSpeedEnabled;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly CustomRunnerRepository customRunnerRepository;
@@ -40,6 +41,7 @@ namespace RunCat365
             Action<SpeedSource, bool> setIndicatorEnabled,
             Action<SpeedSource, Runner> setIndicatorRunner,
             Action<SpeedSource, bool> setColorTintEnabled,
+            Action<SpeedSource, int> setColorTintStrength,
             Action<SpeedSource, bool> setRunnerSpeedEnabled,
             CustomRunnerRepository customRunnerRepository,
             Action<SpeedSource, string> applyCustomRunner,
@@ -62,6 +64,7 @@ namespace RunCat365
             this.setIndicatorEnabled = setIndicatorEnabled;
             this.setIndicatorRunner = setIndicatorRunner;
             this.setColorTintEnabled = setColorTintEnabled;
+            this.setColorTintStrength = setColorTintStrength;
             this.setRunnerSpeedEnabled = setRunnerSpeedEnabled;
             this.applyCustomRunner = applyCustomRunner;
             this.customRunnerRepository = customRunnerRepository;
@@ -590,6 +593,7 @@ namespace RunCat365
                     setIndicatorEnabled,
                     setIndicatorRunner,
                     setColorTintEnabled,
+                    setColorTintStrength,
                     setRunnerSpeedEnabled,
                     applyCustomRunner,
                     isSpeedSourceAvailable,
@@ -642,11 +646,19 @@ namespace RunCat365
             }
         }
 
-        internal void SetIndicatorLoadTint(SpeedSource speedSource, int? step)
+        internal void SetIndicatorLoadTint(SpeedSource speedSource, int? step, int strength = 100)
         {
             if (indicators.TryGetValue(speedSource, out var indicator))
             {
-                indicator.SetLoadTintStep(step);
+                indicator.SetLoadTintStep(step, strength);
+            }
+        }
+
+        internal void SetIndicatorLoadTintStrength(SpeedSource speedSource, int strength)
+        {
+            if (indicators.TryGetValue(speedSource, out var indicator))
+            {
+                indicator.SetLoadTintStrength(strength);
             }
         }
 

@@ -84,12 +84,15 @@ namespace RunCat365
 
         /// <summary>
         /// Overlay translucent #E53935 on the theme-resolved frame.
-        /// Alpha scales with step/15, muted so step 15 is clearly red but not opaque.
+        /// Alpha scales with step/15 and strength/100, muted so step 15 at 100 is clearly red but not opaque.
         /// </summary>
-        internal static Bitmap ApplyLoadTint(this Bitmap bitmap, int step)
+        internal static Bitmap ApplyLoadTint(this Bitmap bitmap, int step, int strength = 100)
         {
             var clampedStep = Math.Clamp(step, 0, LoadTintStepCount - 1);
-            var tintAlpha = clampedStep / (float)(LoadTintStepCount - 1) * LoadTintMaxAlpha;
+            var clampedStrength = Math.Clamp(strength, 0, 100);
+            var tintAlpha = clampedStep / (float)(LoadTintStepCount - 1)
+                * LoadTintMaxAlpha
+                * (clampedStrength / 100f);
             var newBitmap = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format32bppArgb);
 
             using var srcLock = new BitmapLock(bitmap, ImageLockMode.ReadOnly);

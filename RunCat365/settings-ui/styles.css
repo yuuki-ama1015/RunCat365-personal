@@ -483,6 +483,15 @@ a {
   background: #fff;
 }
 
+.tint-strength-row input[type="range"] {
+  width: 100%;
+  accent-color: #e53935;
+}
+
+.tint-strength-row input[type="range"]:disabled {
+  opacity: 0.45;
+}
+
 .placeholder-list {
   display: grid;
   gap: 10px;

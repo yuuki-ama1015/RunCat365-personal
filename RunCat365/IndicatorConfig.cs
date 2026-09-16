@@ -21,6 +21,7 @@ namespace RunCat365
         internal Runner Runner { get; set; }
         internal string? CustomRunnerName { get; set; }
         internal bool ColorTintEnabled { get; set; }
+        internal int ColorTintStrength { get; set; }
         internal bool RunnerSpeedEnabled { get; set; }
 
         internal IndicatorConfig(
@@ -29,7 +30,8 @@ namespace RunCat365
             Runner runner,
             string? customRunnerName,
             bool colorTintEnabled = false,
-            bool runnerSpeedEnabled = true
+            bool runnerSpeedEnabled = true,
+            int colorTintStrength = 100
         )
         {
             SpeedSource = speedSource;
@@ -38,6 +40,7 @@ namespace RunCat365
             CustomRunnerName = customRunnerName;
             ColorTintEnabled = colorTintEnabled;
             RunnerSpeedEnabled = runnerSpeedEnabled;
+            ColorTintStrength = Math.Clamp(colorTintStrength, 0, 100);
         }
 
         internal static Runner DefaultRunnerFor(SpeedSource speedSource)

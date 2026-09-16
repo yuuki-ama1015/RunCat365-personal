@@ -363,6 +363,54 @@ namespace RunCat365.Properties {
             }
         }
 
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int CpuColorTintStrength {
+            get {
+                return ((int)(this["CpuColorTintStrength"]));
+            }
+            set {
+                this["CpuColorTintStrength"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int GpuColorTintStrength {
+            get {
+                return ((int)(this["GpuColorTintStrength"]));
+            }
+            set {
+                this["GpuColorTintStrength"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int MemoryColorTintStrength {
+            get {
+                return ((int)(this["MemoryColorTintStrength"]));
+            }
+            set {
+                this["MemoryColorTintStrength"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int TemperatureColorTintStrength {
+            get {
+                return ((int)(this["TemperatureColorTintStrength"]));
+            }
+            set {
+                this["TemperatureColorTintStrength"] = value;
+            }
+        }
+
         public bool IndicatorsMigrated {
             get {
                 return ((bool)(this["IndicatorsMigrated"]));

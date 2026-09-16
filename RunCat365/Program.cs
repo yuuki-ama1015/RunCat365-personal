@@ -62,6 +62,7 @@ namespace RunCat365
         private readonly StorageRepository storageRepository;
         private readonly NetworkRepository networkRepository;
         private readonly CustomRunnerRepository customRunnerRepository;
+        private readonly StillSetRepository stillSetRepository;
         private readonly LaunchAtStartupManager launchAtStartupManager;
         private readonly ContextMenuManager contextMenuManager;
         private readonly FormsTimer fetchTimer;
@@ -88,6 +89,7 @@ namespace RunCat365
             storageRepository = new StorageRepository();
             networkRepository = new NetworkRepository();
             customRunnerRepository = new CustomRunnerRepository();
+            stillSetRepository = new StillSetRepository();
             launchAtStartupManager = new LaunchAtStartupManager();
 
             LoadIndicatorConfigs();
@@ -99,9 +101,13 @@ namespace RunCat365
                 (source, enabled) => ChangeColorTintEnabled(source, enabled),
                 (source, strength) => ChangeColorTintStrength(source, strength),
                 (source, enabled) => ChangeRunnerSpeedEnabled(source, enabled),
+                (source, enabled) => ChangeStillModeEnabled(source, enabled),
+                (source, name) => ChangeStillSet(source, name),
                 customRunnerRepository,
+                stillSetRepository,
                 (source, name) => ApplyCustomRunner(source, name),
                 deletedName => HandleCustomRunnerDeleted(deletedName),
+                deletedName => HandleStillSetDeleted(deletedName),
                 () => GetSystemTheme(),
                 () => manualTheme,
                 t => ChangeManualTheme(t),
@@ -144,7 +150,9 @@ namespace RunCat365
                     NullIfEmpty(UserSettings.Default.CpuCustomRunnerName),
                     UserSettings.Default.CpuColorTintEnabled,
                     UserSettings.Default.CpuRunnerSpeedEnabled,
-                    UserSettings.Default.CpuColorTintStrength
+                    UserSettings.Default.CpuColorTintStrength,
+                    UserSettings.Default.CpuStillModeEnabled,
+                    NullIfEmpty(UserSettings.Default.CpuStillSetName)
                 );
                 indicatorConfigs[SpeedSource.GPU] = new IndicatorConfig(
                     SpeedSource.GPU,
@@ -153,7 +161,9 @@ namespace RunCat365
                     NullIfEmpty(UserSettings.Default.GpuCustomRunnerName),
                     UserSettings.Default.GpuColorTintEnabled,
                     UserSettings.Default.GpuRunnerSpeedEnabled,
-                    UserSettings.Default.GpuColorTintStrength
+                    UserSettings.Default.GpuColorTintStrength,
+                    UserSettings.Default.GpuStillModeEnabled,
+                    NullIfEmpty(UserSettings.Default.GpuStillSetName)
                 );
                 indicatorConfigs[SpeedSource.Memory] = new IndicatorConfig(
                     SpeedSource.Memory,
@@ -162,7 +172,9 @@ namespace RunCat365
                     NullIfEmpty(UserSettings.Default.MemoryCustomRunnerName),
                     UserSettings.Default.MemoryColorTintEnabled,
                     UserSettings.Default.MemoryRunnerSpeedEnabled,
-                    UserSettings.Default.MemoryColorTintStrength
+                    UserSettings.Default.MemoryColorTintStrength,
+                    UserSettings.Default.MemoryStillModeEnabled,
+                    NullIfEmpty(UserSettings.Default.MemoryStillSetName)
                 );
                 indicatorConfigs[SpeedSource.Temperature] = new IndicatorConfig(
                     SpeedSource.Temperature,
@@ -171,7 +183,9 @@ namespace RunCat365
                     NullIfEmpty(UserSettings.Default.TemperatureCustomRunnerName),
                     UserSettings.Default.TemperatureColorTintEnabled,
                     UserSettings.Default.TemperatureRunnerSpeedEnabled,
-                    UserSettings.Default.TemperatureColorTintStrength
+                    UserSettings.Default.TemperatureColorTintStrength,
+                    UserSettings.Default.TemperatureStillModeEnabled,
+                    NullIfEmpty(UserSettings.Default.TemperatureStillSetName)
                 );
             }
 
@@ -181,7 +195,7 @@ namespace RunCat365
                 {
                     config.Enabled = false;
                 }
-                EnsureRunnerOrTint(config);
+                EnsureDisplayMode(config);
             }
 
             EnsureAtLeastOneEnabled();
@@ -242,6 +256,8 @@ namespace RunCat365
                 UserSettings.Default.CpuColorTintEnabled = cpu.ColorTintEnabled;
                 UserSettings.Default.CpuRunnerSpeedEnabled = cpu.RunnerSpeedEnabled;
                 UserSettings.Default.CpuColorTintStrength = cpu.ColorTintStrength;
+                UserSettings.Default.CpuStillModeEnabled = cpu.StillModeEnabled;
+                UserSettings.Default.CpuStillSetName = cpu.StillSetName ?? string.Empty;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.GPU, out var gpu))
             {
@@ -251,6 +267,8 @@ namespace RunCat365
                 UserSettings.Default.GpuColorTintEnabled = gpu.ColorTintEnabled;
                 UserSettings.Default.GpuRunnerSpeedEnabled = gpu.RunnerSpeedEnabled;
                 UserSettings.Default.GpuColorTintStrength = gpu.ColorTintStrength;
+                UserSettings.Default.GpuStillModeEnabled = gpu.StillModeEnabled;
+                UserSettings.Default.GpuStillSetName = gpu.StillSetName ?? string.Empty;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.Memory, out var memory))
             {
@@ -260,6 +278,8 @@ namespace RunCat365
                 UserSettings.Default.MemoryColorTintEnabled = memory.ColorTintEnabled;
                 UserSettings.Default.MemoryRunnerSpeedEnabled = memory.RunnerSpeedEnabled;
                 UserSettings.Default.MemoryColorTintStrength = memory.ColorTintStrength;
+                UserSettings.Default.MemoryStillModeEnabled = memory.StillModeEnabled;
+                UserSettings.Default.MemoryStillSetName = memory.StillSetName ?? string.Empty;
             }
             if (indicatorConfigs.TryGetValue(SpeedSource.Temperature, out var temperature))
             {
@@ -269,6 +289,8 @@ namespace RunCat365
                 UserSettings.Default.TemperatureColorTintEnabled = temperature.ColorTintEnabled;
                 UserSettings.Default.TemperatureRunnerSpeedEnabled = temperature.RunnerSpeedEnabled;
                 UserSettings.Default.TemperatureColorTintStrength = temperature.ColorTintStrength;
+                UserSettings.Default.TemperatureStillModeEnabled = temperature.StillModeEnabled;
+                UserSettings.Default.TemperatureStillSetName = temperature.StillSetName ?? string.Empty;
             }
             UserSettings.Default.IndicatorsMigrated = true;
             UserSettings.Default.Save();
@@ -317,7 +339,8 @@ namespace RunCat365
                 () => indicatorConfigs,
                 GetSystemTheme(),
                 manualTheme,
-                customRunnerRepository
+                customRunnerRepository,
+                stillSetRepository
             );
         }
 
@@ -368,14 +391,7 @@ namespace RunCat365
             contextMenuManager.SetIndicatorVisible(source, config.Enabled);
             if (config.Enabled)
             {
-                if (!string.IsNullOrEmpty(config.CustomRunnerName))
-                {
-                    ApplyCustomRunner(source, config.CustomRunnerName);
-                }
-                else
-                {
-                    contextMenuManager.ApplyBuiltInIcons(source, GetSystemTheme(), manualTheme, config.Runner);
-                }
+                ApplyIconsForConfig(config);
             }
         }
 
@@ -384,6 +400,11 @@ namespace RunCat365
             if (!indicatorConfigs.TryGetValue(source, out var config)) return;
             config.Runner = runner;
             config.CustomRunnerName = null;
+            if (config.StillModeEnabled)
+            {
+                config.StillModeEnabled = false;
+                EnsureDisplayMode(config);
+            }
             SaveIndicatorSettings();
             contextMenuManager.ApplyBuiltInIcons(source, GetSystemTheme(), manualTheme, runner);
         }
@@ -391,10 +412,19 @@ namespace RunCat365
         private void ChangeColorTintEnabled(SpeedSource source, bool enabled)
         {
             if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            var wasStill = config.StillModeEnabled;
             config.ColorTintEnabled = enabled;
-            EnsureRunnerOrTint(config);
+            if (enabled)
+            {
+                config.StillModeEnabled = false;
+            }
+            EnsureDisplayMode(config);
             SaveIndicatorSettings();
-            if (!config.ColorTintEnabled)
+            if (wasStill && !config.StillModeEnabled)
+            {
+                ApplyIconsForConfig(config);
+            }
+            if (!config.ColorTintEnabled || config.StillModeEnabled)
             {
                 contextMenuManager.SetIndicatorLoadTint(source, null);
             }
@@ -419,16 +449,121 @@ namespace RunCat365
         private void ChangeRunnerSpeedEnabled(SpeedSource source, bool enabled)
         {
             if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            var wasStill = config.StillModeEnabled;
             config.RunnerSpeedEnabled = enabled;
-            EnsureRunnerOrTint(config);
+            if (enabled)
+            {
+                config.StillModeEnabled = false;
+            }
+            EnsureDisplayMode(config);
+            SaveIndicatorSettings();
+            if (wasStill && !config.StillModeEnabled)
+            {
+                ApplyIconsForConfig(config);
+            }
+        }
+
+        private void ChangeStillModeEnabled(SpeedSource source, bool enabled)
+        {
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            config.StillModeEnabled = enabled;
+            if (enabled)
+            {
+                config.RunnerSpeedEnabled = false;
+                config.ColorTintEnabled = false;
+                contextMenuManager.SetIndicatorLoadTint(source, null);
+                ApplyIconsForConfig(config);
+            }
+            else
+            {
+                EnsureDisplayMode(config);
+                ApplyIconsForConfig(config);
+            }
             SaveIndicatorSettings();
         }
 
-        private static void EnsureRunnerOrTint(IndicatorConfig config)
+        private void ChangeStillSet(SpeedSource source, string name)
         {
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            if (string.IsNullOrWhiteSpace(name)) return;
+            if (stillSetRepository.GetByName(name) is null) return;
+            config.StillSetName = name;
+            config.StillModeEnabled = true;
+            config.RunnerSpeedEnabled = false;
+            config.ColorTintEnabled = false;
+            contextMenuManager.SetIndicatorLoadTint(source, null);
+            SaveIndicatorSettings();
+            ApplyStillSet(source, name);
+        }
+
+        private static void EnsureDisplayMode(IndicatorConfig config)
+        {
+            if (config.StillModeEnabled)
+            {
+                config.RunnerSpeedEnabled = false;
+                config.ColorTintEnabled = false;
+                return;
+            }
             if (config.Enabled && !config.RunnerSpeedEnabled && !config.ColorTintEnabled)
             {
                 config.RunnerSpeedEnabled = true;
+            }
+        }
+
+        private void ApplyIconsForConfig(IndicatorConfig config)
+        {
+            if (!config.Enabled) return;
+            if (config.StillModeEnabled)
+            {
+                if (!string.IsNullOrEmpty(config.StillSetName))
+                {
+                    ApplyStillSet(config.SpeedSource, config.StillSetName);
+                }
+                // No set yet: keep current tray art until the user picks one.
+                return;
+            }
+            if (!string.IsNullOrEmpty(config.CustomRunnerName))
+            {
+                ApplyCustomRunner(config.SpeedSource, config.CustomRunnerName);
+                return;
+            }
+            contextMenuManager.ApplyBuiltInIcons(
+                config.SpeedSource,
+                GetSystemTheme(),
+                manualTheme,
+                config.Runner
+            );
+        }
+
+        private void ApplyStillSet(SpeedSource source, string name)
+        {
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            var frames = stillSetRepository.LoadFrames(name);
+            if (frames.Count == 0) return;
+            config.StillSetName = name;
+            contextMenuManager.ApplyStillIcons(source, frames, GetSystemTheme(), manualTheme);
+            foreach (var frame in frames) frame.Dispose();
+        }
+
+        private void HandleStillSetDeleted(string deletedName)
+        {
+            foreach (var config in indicatorConfigs.Values)
+            {
+                if (!string.Equals(config.StillSetName, deletedName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                config.StillSetName = null;
+                if (config.StillModeEnabled)
+                {
+                    config.StillModeEnabled = false;
+                    EnsureDisplayMode(config);
+                }
+                SaveIndicatorSettings();
+                if (config.Enabled)
+                {
+                    ApplyIconsForConfig(config);
+                }
             }
         }
 
@@ -438,6 +573,11 @@ namespace RunCat365
             var frames = customRunnerRepository.LoadFrames(name);
             if (frames.Count == 0) return;
             config.CustomRunnerName = name;
+            if (config.StillModeEnabled)
+            {
+                config.StillModeEnabled = false;
+                EnsureDisplayMode(config);
+            }
             SaveIndicatorSettings();
             contextMenuManager.ApplyCustomIcons(source, frames, GetSystemTheme(), manualTheme);
             foreach (var frame in frames) frame.Dispose();
@@ -594,6 +734,33 @@ namespace RunCat365
                 contextMenuManager.SetIndicatorText(config.SpeedSource, description);
 
                 var load = GetLoad(config.SpeedSource, cpuInfo, gpuInfo, memoryInfo, temperatureInfo);
+
+                if (config.StillModeEnabled)
+                {
+                    contextMenuManager.SetIndicatorLoadTint(config.SpeedSource, null);
+                    var frameCount = contextMenuManager.GetStillFrameCount(config.SpeedSource);
+                    if (frameCount <= 0 && !string.IsNullOrEmpty(config.StillSetName))
+                    {
+                        ApplyStillSet(config.SpeedSource, config.StillSetName);
+                        frameCount = contextMenuManager.GetStillFrameCount(config.SpeedSource);
+                    }
+                    if (frameCount > 0)
+                    {
+                        contextMenuManager.SetIndicatorStillFrame(
+                            config.SpeedSource,
+                            StillSetRepository.LoadToFrameIndex(load, frameCount)
+                        );
+                    }
+                    else
+                    {
+                        // Still mode on but set not loaded yet — keep idle runner motion.
+                        contextMenuManager.SetIndicatorInterval(
+                            config.SpeedSource,
+                            CalculateInterval(0f)
+                        );
+                    }
+                    continue;
+                }
 
                 var forced = false;
                 if (config.Enabled && !config.RunnerSpeedEnabled && !config.ColorTintEnabled)

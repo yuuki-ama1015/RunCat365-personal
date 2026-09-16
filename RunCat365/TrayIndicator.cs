@@ -30,6 +30,8 @@ namespace RunCat365
         private Theme currentTheme = Theme.Light;
         private int? tintStep;
         private int tintStrength = 100;
+        private bool stillMode;
+        private int stillFrameIndex;
         private bool disposed;
 
         internal SpeedSource SpeedSource { get; }
@@ -61,7 +63,7 @@ namespace RunCat365
                 notifyIcon.Visible = value;
                 if (value)
                 {
-                    if (!animateTimer.Enabled) animateTimer.Start();
+                    if (!stillMode && !animateTimer.Enabled) animateTimer.Start();
                 }
                 else
                 {
@@ -72,6 +74,19 @@ namespace RunCat365
 
         internal bool HasActiveCustomIcons => ownsSourceFrames && sourceFrames is not null;
 
+        internal bool IsStillMode => stillMode;
+
+        internal int StillFrameCount
+        {
+            get
+            {
+                lock (iconLock)
+                {
+                    return stillMode ? icons.Count : 0;
+                }
+            }
+        }
+
         internal void SetText(string text)
         {
             // NotifyIcon.Text is limited to 63 characters.
@@ -80,6 +95,7 @@ namespace RunCat365
 
         internal void SetInterval(int interval)
         {
+            if (stillMode) return;
             if (interval < 1) interval = 1;
             animateTimer.Stop();
             animateTimer.Interval = interval;
@@ -97,6 +113,7 @@ namespace RunCat365
         /// </summary>
         internal void SetLoadTintStep(int? step, int strength = 100)
         {
+            if (stillMode) return;
             int? normalized = step is null ? null : Math.Clamp(step.Value, 0, 15);
             var normalizedStrength = Math.Clamp(strength, 0, 100);
             if (Nullable.Equals(tintStep, normalized) && tintStrength == normalizedStrength) return;
@@ -110,6 +127,7 @@ namespace RunCat365
         /// </summary>
         internal void SetLoadTintStrength(int strength)
         {
+            if (stillMode) return;
             var normalizedStrength = Math.Clamp(strength, 0, 100);
             if (tintStrength == normalizedStrength) return;
             tintStrength = normalizedStrength;
@@ -118,6 +136,7 @@ namespace RunCat365
 
         internal void SetIcons(Theme systemTheme, Theme manualTheme, Runner runner)
         {
+            ExitStillMode();
             ClearSourceFrames();
 
             var runnerName = runner.GetString();
@@ -136,15 +155,44 @@ namespace RunCat365
             ownsSourceFrames = false;
             currentTheme = ResolveTheme(systemTheme, manualTheme);
             RebuildIconsFromSource();
+            RestartAnimationIfVisible();
         }
 
         internal void SetCustomIcons(List<Bitmap> frames, Theme systemTheme, Theme manualTheme)
         {
+            ExitStillMode();
             ClearSourceFrames();
             sourceFrames = frames.Select(f => new Bitmap(f)).ToList();
             ownsSourceFrames = true;
             currentTheme = ResolveTheme(systemTheme, manualTheme);
             RebuildIconsFromSource();
+            RestartAnimationIfVisible();
+        }
+
+        /// <summary>
+        /// Load a still set as themed tray icons. Animation stops; frames switch by load hard-cut.
+        /// </summary>
+        internal void SetStillIcons(List<Bitmap> frames, Theme systemTheme, Theme manualTheme)
+        {
+            ClearSourceFrames();
+            sourceFrames = frames.Select(f => new Bitmap(f)).ToList();
+            ownsSourceFrames = true;
+            currentTheme = ResolveTheme(systemTheme, manualTheme);
+            stillMode = true;
+            tintStep = null;
+            animateTimer.Stop();
+            RebuildIconsFromSource();
+            stillFrameIndex = 0;
+            ShowStillFrame(0);
+        }
+
+        /// <summary>
+        /// Hard-cut to the still frame for the current load band. No crossfade.
+        /// </summary>
+        internal void SetStillFrameIndex(int index)
+        {
+            if (!stillMode) return;
+            ShowStillFrame(index);
         }
 
         internal void RecolorActiveCustomIcons(Theme systemTheme, Theme manualTheme)
@@ -152,10 +200,36 @@ namespace RunCat365
             if (!HasActiveCustomIcons) return;
             currentTheme = ResolveTheme(systemTheme, manualTheme);
             RebuildIconsFromSource();
+            if (stillMode) ShowStillFrame(stillFrameIndex);
+        }
+
+        private void ExitStillMode()
+        {
+            stillMode = false;
+            stillFrameIndex = 0;
+        }
+
+        private void RestartAnimationIfVisible()
+        {
+            if (notifyIcon.Visible && !stillMode && !animateTimer.Enabled)
+            {
+                animateTimer.Start();
+            }
+        }
+
+        private void ShowStillFrame(int index)
+        {
+            lock (iconLock)
+            {
+                if (icons.Count == 0) return;
+                stillFrameIndex = Math.Clamp(index, 0, icons.Count - 1);
+                notifyIcon.Icon = icons[stillFrameIndex];
+            }
         }
 
         private void AdvanceFrame()
         {
+            if (stillMode) return;
             lock (iconLock)
             {
                 if (icons.Count == 0) return;
@@ -192,7 +266,7 @@ namespace RunCat365
 
                 try
                 {
-                    if (tintStep is int step)
+                    if (!stillMode && tintStep is int step)
                     {
                         using var tinted = themed.ApplyLoadTint(step, tintStrength);
                         list.Add(tinted.ToIcon());
@@ -222,8 +296,16 @@ namespace RunCat365
                 current = 0;
                 if (icons.Count > 0)
                 {
-                    notifyIcon.Icon = icons[0];
-                    current = 1 % icons.Count;
+                    if (stillMode)
+                    {
+                        stillFrameIndex = Math.Clamp(stillFrameIndex, 0, icons.Count - 1);
+                        notifyIcon.Icon = icons[stillFrameIndex];
+                    }
+                    else
+                    {
+                        notifyIcon.Icon = icons[0];
+                        current = 1 % icons.Count;
+                    }
                 }
             }
 

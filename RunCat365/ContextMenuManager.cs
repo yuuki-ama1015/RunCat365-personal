@@ -24,6 +24,7 @@ namespace RunCat365
         private readonly ContextMenuStrip contextMenuStrip;
         private EndlessGameForm? endlessGameForm;
         private CustomRunnerForm? customRunnerForm;
+        private StillSetForm? stillSetForm;
         private SettingsForm? settingsForm;
         private readonly Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs;
         private readonly Action<SpeedSource, bool> setIndicatorEnabled;
@@ -31,9 +32,13 @@ namespace RunCat365
         private readonly Action<SpeedSource, bool> setColorTintEnabled;
         private readonly Action<SpeedSource, int> setColorTintStrength;
         private readonly Action<SpeedSource, bool> setRunnerSpeedEnabled;
+        private readonly Action<SpeedSource, bool> setStillModeEnabled;
+        private readonly Action<SpeedSource, string> setStillSet;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly CustomRunnerRepository customRunnerRepository;
+        private readonly StillSetRepository stillSetRepository;
         private readonly Action<string> onCustomRunnerDeleted;
+        private readonly Action<string> onStillSetDeleted;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
 
         internal ContextMenuManager(
@@ -43,9 +48,13 @@ namespace RunCat365
             Action<SpeedSource, bool> setColorTintEnabled,
             Action<SpeedSource, int> setColorTintStrength,
             Action<SpeedSource, bool> setRunnerSpeedEnabled,
+            Action<SpeedSource, bool> setStillModeEnabled,
+            Action<SpeedSource, string> setStillSet,
             CustomRunnerRepository customRunnerRepository,
+            StillSetRepository stillSetRepository,
             Action<SpeedSource, string> applyCustomRunner,
             Action<string> onCustomRunnerDeleted,
+            Action<string> onStillSetDeleted,
             Func<Theme> getSystemTheme,
             Func<Theme> getManualTheme,
             Action<Theme> setManualTheme,
@@ -66,11 +75,19 @@ namespace RunCat365
             this.setColorTintEnabled = setColorTintEnabled;
             this.setColorTintStrength = setColorTintStrength;
             this.setRunnerSpeedEnabled = setRunnerSpeedEnabled;
+            this.setStillModeEnabled = setStillModeEnabled;
+            this.setStillSet = setStillSet;
             this.applyCustomRunner = applyCustomRunner;
             this.customRunnerRepository = customRunnerRepository;
+            this.stillSetRepository = stillSetRepository;
             this.onCustomRunnerDeleted = deletedName =>
             {
                 onCustomRunnerDeleted(deletedName);
+                settingsForm?.NotifyIndicatorsChanged();
+            };
+            this.onStillSetDeleted = deletedName =>
+            {
+                onStillSetDeleted(deletedName);
                 settingsForm?.NotifyIndicatorsChanged();
             };
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
@@ -100,7 +117,7 @@ namespace RunCat365
                         (string? s, out Theme t) => Enum.TryParse(s, out t),
                         t => setManualTheme(t)
                     );
-                    RefreshAllIndicatorIcons(getConfigs, getSystemTheme, getManualTheme, customRunnerRepository);
+                    RefreshAllIndicatorIcons(getConfigs, getSystemTheme, getManualTheme, customRunnerRepository, stillSetRepository);
                 },
                 t => getManualTheme() == t,
                 _ => null
@@ -204,7 +221,7 @@ namespace RunCat365
                 indicators[speedSource] = indicator;
             }
 
-            SyncFromConfigs(getConfigs, getSystemTheme, getManualTheme, customRunnerRepository, isSpeedSourceAvailable);
+            SyncFromConfigs(getConfigs, getSystemTheme, getManualTheme, customRunnerRepository, stillSetRepository, isSpeedSourceAvailable);
         }
 
         private CustomToolStripMenuItem BuildIndicatorsMenu(
@@ -263,7 +280,6 @@ namespace RunCat365
                             r =>
                             {
                                 setIndicatorRunner(speedSource, r);
-                                ApplyRunnerToIndicator(speedSource, getConfigs, getSystemTheme, getManualTheme, customRunnerRepository);
                                 settingsForm?.NotifyIndicatorsChanged();
                             }
                         );
@@ -315,6 +331,7 @@ namespace RunCat365
             Func<Theme> getSystemTheme,
             Func<Theme> getManualTheme,
             CustomRunnerRepository customRunnerRepository,
+            StillSetRepository stillSetRepository,
             Func<SpeedSource, bool> isSpeedSourceAvailable
         )
         {
@@ -329,21 +346,40 @@ namespace RunCat365
                     continue;
                 }
 
-                ApplyRunnerToIndicator(speedSource, getConfigs, getSystemTheme, getManualTheme, customRunnerRepository);
+                ApplyIconsToIndicator(
+                    speedSource,
+                    getConfigs,
+                    getSystemTheme,
+                    getManualTheme,
+                    customRunnerRepository,
+                    stillSetRepository
+                );
                 indicator.Visible = true;
             }
         }
 
-        private void ApplyRunnerToIndicator(
+        private void ApplyIconsToIndicator(
             SpeedSource speedSource,
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
             Func<Theme> getSystemTheme,
             Func<Theme> getManualTheme,
-            CustomRunnerRepository customRunnerRepository
+            CustomRunnerRepository customRunnerRepository,
+            StillSetRepository stillSetRepository
         )
         {
             if (!indicators.TryGetValue(speedSource, out var indicator)) return;
             if (!getConfigs().TryGetValue(speedSource, out var config)) return;
+
+            if (config.StillModeEnabled && !string.IsNullOrEmpty(config.StillSetName))
+            {
+                var stillFrames = stillSetRepository.LoadFrames(config.StillSetName);
+                if (stillFrames.Count > 0)
+                {
+                    indicator.SetStillIcons(stillFrames, getSystemTheme(), getManualTheme());
+                    foreach (var frame in stillFrames) frame.Dispose();
+                    return;
+                }
+            }
 
             if (!string.IsNullOrEmpty(config.CustomRunnerName))
             {
@@ -363,13 +399,21 @@ namespace RunCat365
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
             Func<Theme> getSystemTheme,
             Func<Theme> getManualTheme,
-            CustomRunnerRepository customRunnerRepository
+            CustomRunnerRepository customRunnerRepository,
+            StillSetRepository stillSetRepository
         )
         {
             foreach (var speedSource in indicators.Keys)
             {
                 if (!getConfigs().TryGetValue(speedSource, out var config) || !config.Enabled) continue;
-                ApplyRunnerToIndicator(speedSource, getConfigs, getSystemTheme, getManualTheme, customRunnerRepository);
+                ApplyIconsToIndicator(
+                    speedSource,
+                    getConfigs,
+                    getSystemTheme,
+                    getManualTheme,
+                    customRunnerRepository,
+                    stillSetRepository
+                );
             }
         }
 
@@ -377,7 +421,8 @@ namespace RunCat365
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
             Theme systemTheme,
             Theme manualTheme,
-            CustomRunnerRepository customRunnerRepository
+            CustomRunnerRepository customRunnerRepository,
+            StillSetRepository stillSetRepository
         )
         {
             foreach (var (speedSource, indicator) in indicators)
@@ -387,14 +432,26 @@ namespace RunCat365
                 {
                     indicator.RecolorActiveCustomIcons(systemTheme, manualTheme);
                 }
-                else if (!string.IsNullOrEmpty(config.CustomRunnerName))
+                else if (config.StillModeEnabled && !string.IsNullOrEmpty(config.StillSetName))
                 {
-                    ApplyRunnerToIndicator(
+                    ApplyIconsToIndicator(
                         speedSource,
                         getConfigs,
                         () => systemTheme,
                         () => manualTheme,
-                        customRunnerRepository
+                        customRunnerRepository,
+                        stillSetRepository
+                    );
+                }
+                else if (!string.IsNullOrEmpty(config.CustomRunnerName))
+                {
+                    ApplyIconsToIndicator(
+                        speedSource,
+                        getConfigs,
+                        () => systemTheme,
+                        () => manualTheme,
+                        customRunnerRepository,
+                        stillSetRepository
                     );
                 }
                 else
@@ -595,11 +652,16 @@ namespace RunCat365
                     setColorTintEnabled,
                     setColorTintStrength,
                     setRunnerSpeedEnabled,
+                    setStillModeEnabled,
+                    setStillSet,
                     applyCustomRunner,
                     isSpeedSourceAvailable,
                     customRunnerRepository,
+                    stillSetRepository,
                     openCustomRunnerEditor: selectName => ShowOrActivateCustomRunnerWindow(selectName),
-                    onCustomRunnerDeleted: this.onCustomRunnerDeleted
+                    onCustomRunnerDeleted: this.onCustomRunnerDeleted,
+                    openStillSetEditor: selectName => ShowOrActivateStillSetWindow(selectName),
+                    onStillSetDeleted: this.onStillSetDeleted
                 );
                 settingsForm.FormClosed += (sender, e) =>
                 {
@@ -662,6 +724,59 @@ namespace RunCat365
             }
         }
 
+        private void ShowOrActivateStillSetWindow(string? selectName = null)
+        {
+            if (stillSetForm is null)
+            {
+                stillSetForm = new StillSetForm(
+                    stillSetRepository,
+                    selectName,
+                    onSaved: _ => settingsForm?.NotifyIndicatorsChanged(),
+                    onDeleted: name => onStillSetDeleted(name)
+                );
+                stillSetForm.FormClosed += (_, _) =>
+                {
+                    stillSetForm = null;
+                    settingsForm?.NotifyIndicatorsChanged();
+                };
+                stillSetForm.Show();
+            }
+            else
+            {
+                if (stillSetForm.WindowState == FormWindowState.Minimized)
+                {
+                    stillSetForm.WindowState = FormWindowState.Normal;
+                }
+                stillSetForm.Activate();
+            }
+        }
+
+        internal void ApplyStillIcons(
+            SpeedSource speedSource,
+            List<Bitmap> frames,
+            Theme systemTheme,
+            Theme manualTheme
+        )
+        {
+            if (!indicators.TryGetValue(speedSource, out var indicator)) return;
+            indicator.SetStillIcons(frames, systemTheme, manualTheme);
+        }
+
+        internal void SetIndicatorStillFrame(SpeedSource speedSource, int index)
+        {
+            if (indicators.TryGetValue(speedSource, out var indicator))
+            {
+                indicator.SetStillFrameIndex(index);
+            }
+        }
+
+        internal int GetStillFrameCount(SpeedSource speedSource)
+        {
+            return indicators.TryGetValue(speedSource, out var indicator)
+                ? indicator.StillFrameCount
+                : 0;
+        }
+
         internal void ApplyCustomIcons(
             SpeedSource speedSource,
             List<Bitmap> frames,
@@ -719,6 +834,7 @@ namespace RunCat365
                 contextMenuStrip?.Dispose();
                 endlessGameForm?.Dispose();
                 customRunnerForm?.Dispose();
+                stillSetForm?.Dispose();
                 settingsForm?.Dispose();
             }
         }

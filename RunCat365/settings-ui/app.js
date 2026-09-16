@@ -10,7 +10,7 @@
   const app = document.querySelector(".app");
   const toggle = document.getElementById("sidebar-toggle");
 
-  /** @type {Record<string, { id: string, enabled: boolean, available: boolean, runner: string, customRunnerName: string|null, colorTintEnabled: boolean, colorTintStrength: number, runnerSpeedEnabled: boolean }>} */
+  /** @type {Record<string, { id: string, enabled: boolean, available: boolean, runner: string, customRunnerName: string|null, colorTintEnabled: boolean, colorTintStrength: number, runnerSpeedEnabled: boolean, stillModeEnabled: boolean, stillSetName: string|null }>} */
   let indicatorState = {};
 
   /** @type {{ builtin: Array<{ id: string, label: string }>, custom: Array<{ name: string, frameCount?: number }> }} */
@@ -22,6 +22,9 @@
     ],
     custom: [],
   };
+
+  /** @type {Array<{ name: string, frameCount?: number }>} */
+  let stillSetsCatalog = [];
 
   function isHostAvailable() {
     return !!(window.chrome && chrome.webview);
@@ -95,6 +98,21 @@
     return builtinOptions + customOptions;
   }
 
+
+  function buildStillOptionsHtml(state) {
+    const selected = state && state.stillSetName ? state.stillSetName : "";
+    const placeholderSelected = selected ? "" : " selected";
+    let html = `<option value=""${placeholderSelected}>（未設定）</option>`;
+    stillSetsCatalog.forEach((set) => {
+      const value = set.name;
+      const selectedAttr = value === selected ? " selected" : "";
+      const frames =
+        typeof set.frameCount === "number" ? `（${set.frameCount} 枚）` : "";
+      html += `<option value="${escapeHtml(value)}"${selectedAttr}>${escapeHtml(value)}${frames}</option>`;
+    });
+    return html;
+  }
+
   function escapeHtml(text) {
     return String(text)
       .replace(/&/g, "&amp;")
@@ -109,12 +127,15 @@
     return Math.max(0, Math.min(100, Math.round(n)));
   }
 
-  function applyIndicatorState(items, runners) {
+  function applyIndicatorState(items, runners, stillSets) {
     if (runners && Array.isArray(runners.builtin)) {
       runnersCatalog = {
         builtin: runners.builtin,
         custom: Array.isArray(runners.custom) ? runners.custom : [],
       };
+    }
+    if (Array.isArray(stillSets)) {
+      stillSetsCatalog = stillSets;
     }
 
     indicatorState = {};
@@ -129,6 +150,8 @@
         colorTintEnabled: !!item.colorTintEnabled,
         colorTintStrength: clampStrength(item.colorTintStrength),
         runnerSpeedEnabled: item.runnerSpeedEnabled !== false,
+        stillModeEnabled: !!item.stillModeEnabled,
+        stillSetName: item.stillSetName || null,
       };
     });
 
@@ -189,27 +212,43 @@
     if (previewName) previewName.textContent = preview.name;
     if (previewKind) previewKind.textContent = preview.kind;
 
+    const stillOn = !!state.stillModeEnabled;
     const runnerChip = view.querySelector('[data-mode-chip="runner"]');
     const tintChip = view.querySelector('[data-mode-chip="tint"]');
+    const stillChip = view.querySelector('[data-mode-chip="still"]');
     if (runnerChip) {
-      runnerChip.setAttribute(
-        "aria-pressed",
-        state.runnerSpeedEnabled ? "true" : "false"
-      );
-      runnerChip.classList.toggle("mode-chip-muted", !state.runnerSpeedEnabled);
+      const runnerOn = !stillOn && state.runnerSpeedEnabled;
+      runnerChip.setAttribute("aria-pressed", runnerOn ? "true" : "false");
+      runnerChip.classList.toggle("mode-chip-muted", !runnerOn);
+      runnerChip.disabled = stillOn;
     }
     if (tintChip) {
-      tintChip.setAttribute(
-        "aria-pressed",
-        state.colorTintEnabled ? "true" : "false"
-      );
-      tintChip.classList.toggle("mode-chip-muted", !state.colorTintEnabled);
+      const tintOn = !stillOn && state.colorTintEnabled;
+      tintChip.setAttribute("aria-pressed", tintOn ? "true" : "false");
+      tintChip.classList.toggle("mode-chip-muted", !tintOn);
+      tintChip.disabled = stillOn;
+    }
+    if (stillChip) {
+      stillChip.setAttribute("aria-pressed", stillOn ? "true" : "false");
+      stillChip.classList.toggle("mode-chip-muted", !stillOn);
+      stillChip.disabled = false;
+    }
+
+    if (runnerPick instanceof HTMLSelectElement) {
+      runnerPick.disabled = stillOn;
+    }
+
+    const stillPick = view.querySelector("#still-pick");
+    if (stillPick instanceof HTMLSelectElement) {
+      stillPick.innerHTML = buildStillOptionsHtml(state);
+      stillPick.disabled = !stillOn;
+      stillPick.value = state.stillSetName || "";
     }
 
     const strengthSlider = view.querySelector("#tint-strength");
     const strengthValue = view.querySelector("[data-tint-strength-value]");
     if (strengthSlider instanceof HTMLInputElement) {
-      strengthSlider.disabled = !state.colorTintEnabled;
+      strengthSlider.disabled = stillOn || !state.colorTintEnabled;
       strengthSlider.value = String(state.colorTintStrength);
     }
     if (strengthValue) {
@@ -293,7 +332,7 @@
           </div>
         </article>
         <article class="card">
-          <h3>静止画用</h3>
+          <h3>静止画モード用</h3>
           <p>静止画モード用の素材ライブラリ。</p>
           <div class="card-actions">
             <a class="btn secondary" href="#assets/stills">開く</a>
@@ -334,17 +373,16 @@
           <section class="section">
             <h2>表示モード</h2>
             <div class="mode-row">
-              <button class="mode-chip${state && state.runnerSpeedEnabled === false ? " mode-chip-muted" : ""}" type="button" data-mode-chip="runner" aria-pressed="${state && state.runnerSpeedEnabled !== false ? "true" : "false"}">ランナー</button>
-              <button class="mode-chip${state && state.colorTintEnabled ? "" : " mode-chip-muted"}" type="button" data-mode-chip="tint" aria-pressed="${state && state.colorTintEnabled ? "true" : "false"}">色の変化</button>
-              <button class="mode-chip mode-chip-muted" type="button" aria-pressed="false" disabled>静止画モード</button>
+              <button class="mode-chip${state && !state.stillModeEnabled && state.runnerSpeedEnabled !== false ? "" : " mode-chip-muted"}" type="button" data-mode-chip="runner" aria-pressed="${state && !state.stillModeEnabled && state.runnerSpeedEnabled !== false ? "true" : "false"}"${state && state.stillModeEnabled ? " disabled" : ""}>ランナー</button>
+              <button class="mode-chip${state && !state.stillModeEnabled && state.colorTintEnabled ? "" : " mode-chip-muted"}" type="button" data-mode-chip="tint" aria-pressed="${state && !state.stillModeEnabled && state.colorTintEnabled ? "true" : "false"}"${state && state.stillModeEnabled ? " disabled" : ""}>色の変化</button>
+              <button class="mode-chip${state && state.stillModeEnabled ? "" : " mode-chip-muted"}" type="button" data-mode-chip="still" aria-pressed="${state && state.stillModeEnabled ? "true" : "false"}">静止画モード</button>
             </div>
             <p class="hint">
-              ランナーと色の変化を組み合わせて使えます。色の変化は負荷に応じて赤くなります。<br />
-              静止画モードはまだ未接続のため保存されません。
+              ランナーと色の変化は組み合わせて使えます。静止画モードは排他で、負荷帯ごとにフレームを切り替えます（クロスフェードなし）。
             </p>
             <div class="field-row tint-strength-row">
               <label for="tint-strength">濃さ <span data-tint-strength-value>${state ? clampStrength(state.colorTintStrength) : 100}</span></label>
-              <input type="range" id="tint-strength" min="0" max="100" value="${state ? clampStrength(state.colorTintStrength) : 100}"${state && state.colorTintEnabled ? "" : " disabled"} />
+              <input type="range" id="tint-strength" min="0" max="100" value="${state ? clampStrength(state.colorTintStrength) : 100}"${state && state.colorTintEnabled && !(state && state.stillModeEnabled) ? "" : " disabled"} />
             </div>
           </section>
 
@@ -352,14 +390,14 @@
             <h2>素材・速度</h2>
             <div class="field-row">
               <label for="runner-pick">ランナー用素材</label>
-              <select id="runner-pick">
+              <select id="runner-pick"${state && state.stillModeEnabled ? " disabled" : ""}>
                 ${buildRunnerOptionsHtml(state)}
               </select>
             </div>
             <div class="field-row">
-              <label for="still-pick">静止画用素材</label>
-              <select id="still-pick" disabled>
-                <option>（未設定）</option>
+              <label for="still-pick">静止画モード用素材</label>
+              <select id="still-pick"${state && state.stillModeEnabled ? "" : " disabled"}>
+                ${buildStillOptionsHtml(state)}
               </select>
             </div>
             <div class="field-row">
@@ -396,6 +434,7 @@
     const runnerChip = view.querySelector('[data-mode-chip="runner"]');
     if (runnerChip) {
       runnerChip.addEventListener("click", () => {
+        if (runnerChip.disabled) return;
         const pressed = runnerChip.getAttribute("aria-pressed") === "true";
         postHost({
           type: "setRunnerSpeedEnabled",
@@ -408,9 +447,22 @@
     const tintChip = view.querySelector('[data-mode-chip="tint"]');
     if (tintChip) {
       tintChip.addEventListener("click", () => {
+        if (tintChip.disabled) return;
         const pressed = tintChip.getAttribute("aria-pressed") === "true";
         postHost({
           type: "setColorTintEnabled",
+          id,
+          enabled: !pressed,
+        });
+      });
+    }
+
+    const stillChip = view.querySelector('[data-mode-chip="still"]');
+    if (stillChip) {
+      stillChip.addEventListener("click", () => {
+        const pressed = stillChip.getAttribute("aria-pressed") === "true";
+        postHost({
+          type: "setStillModeEnabled",
           id,
           enabled: !pressed,
         });
@@ -455,34 +507,95 @@
       });
     }
 
+    const stillPick = view.querySelector("#still-pick");
+    if (stillPick instanceof HTMLSelectElement) {
+      stillPick.addEventListener("change", () => {
+        const value = stillPick.value || "";
+        if (!value) return;
+        postHost({
+          type: "setStillSet",
+          id,
+          name: value,
+        });
+      });
+    }
+
     postHost({ type: "getIndicators" });
   }
 
   function renderAssets(kind, requestHost) {
     const shouldRequestHost = requestHost !== false;
     const isRunners = kind === "runners";
-    const title = isRunners ? "ランナー用" : "静止画用";
+    const title = isRunners ? "ランナー用" : "静止画モード用";
 
     if (!isRunners) {
+      const stillRows =
+        stillSetsCatalog.length === 0
+          ? `
+          <div class="placeholder-item">
+            <span>まだありません</span>
+            <span>—</span>
+          </div>`
+          : stillSetsCatalog
+              .map((set) => {
+                const name = escapeHtml(set.name);
+                const frames =
+                  typeof set.frameCount === "number"
+                    ? `${set.frameCount} 枚`
+                    : "セット";
+                return `
+          <div class="asset-row" data-still-set="${name}">
+            <div class="asset-row-main">
+              <strong>${name}</strong>
+              <span class="asset-meta">${frames}</span>
+            </div>
+            <div class="asset-row-actions">
+              <button class="btn secondary" type="button" data-edit-still="${name}">編集</button>
+              <button class="btn danger" type="button" data-delete-still="${name}">削除</button>
+            </div>
+          </div>`;
+              })
+              .join("");
+
       view.innerHTML = `
         <h1 class="page-title">${title}</h1>
-        <p class="page-subtitle">静止画モード用の素材ライブラリ。</p>
+        <p class="page-subtitle">静止画モード用の素材ライブラリ（2〜16 枚の透過 PNG）。</p>
         <section class="section">
           <h2>登録済み</h2>
-          <div class="placeholder-list">
-            <div class="placeholder-item">
-              <span>まだありません</span>
-              <span>—</span>
-            </div>
+          <div class="asset-list">
+            ${stillRows}
           </div>
           <div class="empty-action">
-            <button class="btn" type="button" disabled>新規作成</button>
+            <button class="btn" type="button" data-create-still>新規作成</button>
             <p class="hint">
-              静止画モードはまだ接続されていないため、素材の追加・保存はできません。
+              低負荷→高負荷の順でフレームを並べます。負荷帯でハードカット切り替えします。
             </p>
           </div>
         </section>
       `;
+
+      const createBtn = view.querySelector("[data-create-still]");
+      if (createBtn) {
+        createBtn.addEventListener("click", () => {
+          postHost({ type: "openStillSetEditor" });
+        });
+      }
+      view.querySelectorAll("[data-edit-still]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const name = btn.getAttribute("data-edit-still");
+          if (!name) return;
+          postHost({ type: "openStillSetEditor", name });
+        });
+      });
+      view.querySelectorAll("[data-delete-still]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const name = btn.getAttribute("data-delete-still");
+          if (!name) return;
+          if (!confirm(`「${name}」を削除しますか？`)) return;
+          postHost({ type: "deleteStillSet", name });
+        });
+      });
+
       if (shouldRequestHost) postHost({ type: "getIndicators" });
       return;
     }
@@ -652,7 +765,7 @@
     chrome.webview.addEventListener("message", (event) => {
       const data = event.data;
       if (!data || data.type !== "indicators") return;
-      applyIndicatorState(data.items || [], data.runners);
+      applyIndicatorState(data.items || [], data.runners, data.stillSets || []);
       const route = currentRoute();
       const assetsMatch = /^assets\/(runners|stills)$/.exec(route);
       if (assetsMatch) {

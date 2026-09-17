@@ -25,26 +25,72 @@ namespace RunCat365
         [STAThread]
         static void Main()
         {
-#if DEBUG
-            var defaultCultureInfo = SupportedLanguage.English.GetDefaultCultureInfo();
-#else
-            var defaultCultureInfo = SupportedLanguageExtension.GetCurrentLanguage().GetDefaultCultureInfo();
-#endif
-            CultureInfo.CurrentUICulture = defaultCultureInfo;
-            CultureInfo.CurrentCulture = defaultCultureInfo;
+            var logDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "RunCat365");
+            var logPath = Path.Combine(logDir, "startup.log");
 
-            using var procMutex = new Mutex(true, "_RUNCAT_MUTEX", out var result);
-            if (!result) return;
-
+            Mutex? procMutex = null;
             try
             {
+#if DEBUG
+                var defaultCultureInfo = SupportedLanguage.English.GetDefaultCultureInfo();
+#else
+                var defaultCultureInfo = SupportedLanguageExtension.GetCurrentLanguage().GetDefaultCultureInfo();
+#endif
+                CultureInfo.CurrentUICulture = defaultCultureInfo;
+                CultureInfo.CurrentCulture = defaultCultureInfo;
+
+                // personal fork: distinct from official / Store RunCat
+                procMutex = new Mutex(true, "_RUNCAT365_PERSONAL_MUTEX", out var createdNew);
+                if (!createdNew)
+                {
+                    MessageBox.Show(
+                        "RunCat 365 はすでに起動しています。",
+                        "RunCat 365",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                    return;
+                }
+
                 ApplicationConfiguration.Initialize();
                 Application.SetColorMode(SystemColorMode.System);
                 Application.Run(new RunCat365ApplicationContext());
             }
+            catch (Exception ex)
+            {
+                try
+                {
+                    Directory.CreateDirectory(logDir);
+                    File.AppendAllText(
+                        logPath,
+                        $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}]\r\n{ex}\r\n\r\n");
+                }
+                catch
+                {
+                    // Logging must never throw a secondary exception.
+                }
+
+                MessageBox.Show(
+                    $"RunCat 365 の起動に失敗しました。\n\n{ex}",
+                    "RunCat 365 - Startup Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
             finally
             {
-                procMutex?.ReleaseMutex();
+                if (procMutex is not null)
+                {
+                    try
+                    {
+                        procMutex.ReleaseMutex();
+                    }
+                    catch (ApplicationException)
+                    {
+                        // Not owned (e.g. early return before acquisition completed).
+                    }
+                    procMutex.Dispose();
+                }
             }
         }
     }

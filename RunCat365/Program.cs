@@ -184,11 +184,22 @@ namespace RunCat365
 
         private void LoadIndicatorConfigs()
         {
-            if (!UserSettings.Default.IndicatorsMigrated)
+            // Phase 3: tolerate missing/corrupt user settings instead of crashing startup.
+            try
+            {
+                if (!UserSettings.Default.IndicatorsMigrated)
+                {
+                    MigrateFromLegacySettings();
+                    return;
+                }
+            }
+            catch (System.Configuration.SettingsPropertyNotFoundException)
             {
                 MigrateFromLegacySettings();
+                return;
             }
-            else
+
+            try
             {
                 indicatorConfigs[SpeedSource.CPU] = new IndicatorConfig(
                     SpeedSource.CPU,
@@ -238,19 +249,23 @@ namespace RunCat365
                     NullIfEmpty(UserSettings.Default.TemperatureStillSetName),
                     UserSettings.Default.TemperatureStillCrossfadeEnabled
                 );
-            }
 
-            foreach (var config in indicatorConfigs.Values)
-            {
-                if (config.Enabled && !IsSpeedSourceAvailable(config.SpeedSource))
+                foreach (var config in indicatorConfigs.Values)
                 {
-                    config.Enabled = false;
+                    if (config.Enabled && !IsSpeedSourceAvailable(config.SpeedSource))
+                    {
+                        config.Enabled = false;
+                    }
+                    EnsureDisplayMode(config);
                 }
-                EnsureDisplayMode(config);
-            }
 
-            EnsureAtLeastOneEnabled();
-            SaveIndicatorSettings();
+                EnsureAtLeastOneEnabled();
+                SaveIndicatorSettings();
+            }
+            catch (System.Configuration.SettingsPropertyNotFoundException)
+            {
+                MigrateFromLegacySettings();
+            }
         }
 
         private void MigrateFromLegacySettings()

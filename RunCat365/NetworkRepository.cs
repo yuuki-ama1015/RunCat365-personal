@@ -63,12 +63,10 @@ namespace RunCat365
                 lastReceived = stats.BytesReceived;
                 lastUpdate = DateTime.UtcNow;
             }
-            catch (NetworkInformationException)
+            catch (Exception)
             {
-                networkInterface = null;
-            }
-            catch (ObjectDisposedException)
-            {
+                // VPN / virtual NIC / disposed handle and any other NIC failure
+                // must not take down the process before the tray exists.
                 networkInterface = null;
             }
         }
@@ -80,7 +78,7 @@ namespace RunCat365
                 var interfaces = NetworkInterface.GetAllNetworkInterfaces();
                 return interfaces.FirstOrDefault(IsValidNetworkInterface);
             }
-            catch (NetworkInformationException)
+            catch (Exception)
             {
                 return null;
             }
@@ -121,12 +119,7 @@ namespace RunCat365
                 lastReceived = stats.BytesReceived;
                 lastUpdate = now;
             }
-            catch (NetworkInformationException)
-            {
-                networkInterface = null;
-                networkInfo = null;
-            }
-            catch (ObjectDisposedException)
+            catch (Exception)
             {
                 networkInterface = null;
                 networkInfo = null;

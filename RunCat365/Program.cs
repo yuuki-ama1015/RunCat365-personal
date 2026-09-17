@@ -72,7 +72,7 @@ namespace RunCat365
                 }
 
                 MessageBox.Show(
-                    $"RunCat 365 の起動に失敗しました。\n\n{ex}",
+                    "RunCat 365 の起動に失敗しました。\n\n詳細は startup.log を確認してください。",
                     "RunCat 365 - Startup Error",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);

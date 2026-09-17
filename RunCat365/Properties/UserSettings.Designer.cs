@@ -553,6 +553,9 @@ namespace RunCat365.Properties {
             }
         }
 
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
         public bool IndicatorsMigrated {
             get {
                 return ((bool)(this["IndicatorsMigrated"]));

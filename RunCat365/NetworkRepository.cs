@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Takuto Nakamura
+// Copyright 2025 Takuto Nakamura
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -42,7 +42,8 @@ namespace RunCat365
 
     internal class NetworkRepository
     {
-        private readonly NetworkInterface? networkInterface;
+        // Not readonly: Update() may clear it after a dead/disposed NIC.
+        private NetworkInterface? networkInterface;
         private long lastSent;
         private long lastReceived;
         private DateTime lastUpdate;
@@ -52,12 +53,24 @@ namespace RunCat365
 
         internal NetworkRepository()
         {
-            networkInterface = GetActiveNetworkInterface();
-            if (networkInterface is null) return;
-            var stats = networkInterface.GetIPStatistics();
-            lastSent = stats.BytesSent;
-            lastReceived = stats.BytesReceived;
-            lastUpdate = DateTime.UtcNow;
+            try
+            {
+                networkInterface = GetActiveNetworkInterface();
+                if (networkInterface is null) return;
+
+                var stats = networkInterface.GetIPStatistics();
+                lastSent = stats.BytesSent;
+                lastReceived = stats.BytesReceived;
+                lastUpdate = DateTime.UtcNow;
+            }
+            catch (NetworkInformationException)
+            {
+                networkInterface = null;
+            }
+            catch (ObjectDisposedException)
+            {
+                networkInterface = null;
+            }
         }
 
         private static NetworkInterface? GetActiveNetworkInterface()
@@ -110,6 +123,12 @@ namespace RunCat365
             }
             catch (NetworkInformationException)
             {
+                networkInterface = null;
+                networkInfo = null;
+            }
+            catch (ObjectDisposedException)
+            {
+                networkInterface = null;
                 networkInfo = null;
             }
         }

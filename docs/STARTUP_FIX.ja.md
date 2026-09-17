@@ -18,6 +18,11 @@ exe をダブルクリックしても何も起きない（トレイにも出な�
 - `Main` に起動ログ (`%LocalAppData%\RunCat365\startup.log`) と例外 MessageBox。
 - `NetworkRepository` の NIC 統計取得を例外耐性化（プロセス全体を落とさない）。
 
+## レビュー後の追加修正
+
+- 起動失敗 MessageBox は短い案内のみ。スタックトレースは `startup.log` に残す。
+- `NetworkRepository` は NIC 系だけでなく一般 `Exception` も吞み、トレイ作成前のクラッシュを防ぐ。
+
 ## まだ後回し
 
 - 設定 / `user.config` の再生成（Phase 3）

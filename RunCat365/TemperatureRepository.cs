@@ -1,4 +1,4 @@
-﻿// Copyright 2025 Takuto Nakamura
+// Copyright 2025 Takuto Nakamura
 //
 //    Licensed under the Apache License, Version 2.0 (the "License");
 //    you may not use this file except in compliance with the License.
@@ -12,6 +12,8 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
+using System.Diagnostics;
+using LibreHardwareMonitor.Hardware;
 using RunCat365.Properties;
 using System.Globalization;
 
@@ -69,6 +71,11 @@ namespace RunCat365
         }
     }
 
+    /// <summary>
+    /// Prefers Windows "Thermal Zone Information" performance counters.
+    /// Falls back to LibreHardwareMonitor CPU sensors when counters are missing
+    /// or return no valid readings.
+    /// </summary>
     internal class TemperatureRepository
     {
         private const float KELVIN_TO_CELSIUS_OFFSET = 273.15f;
@@ -77,26 +84,77 @@ namespace RunCat365
         private const int REFRESH_INTERVAL_TICKS = 30;
 
         private readonly TemperaturePerformanceCounters? counters;
+        private Computer? computer;
+        private bool lhmAvailable;
+        private bool lhmInitAttempted;
         private TemperatureInfo? temperatureInfo;
         private int ticksSinceLastRefresh;
 
-        internal bool IsAvailable => counters is not null;
+        internal bool IsAvailable => counters is not null || lhmAvailable;
 
         internal TemperatureRepository()
         {
             counters = TemperaturePerformanceCounters.TryCreate();
+            if (counters is null)
+            {
+                TryInitializeLhm();
+            }
         }
 
         internal void Update()
         {
-            if (counters is null) return;
-
-            ticksSinceLastRefresh += 1;
-            if (REFRESH_INTERVAL_TICKS <= ticksSinceLastRefresh)
+            TemperatureInfo? fromCounters = null;
+            if (counters is not null)
             {
-                ticksSinceLastRefresh = 0;
-                counters.RefreshInstances();
+                ticksSinceLastRefresh += 1;
+                if (REFRESH_INTERVAL_TICKS <= ticksSinceLastRefresh)
+                {
+                    ticksSinceLastRefresh = 0;
+                    counters.RefreshInstances();
+                }
+                fromCounters = ReadFromCounters();
             }
+
+            if (fromCounters is not null)
+            {
+                temperatureInfo = fromCounters;
+                return;
+            }
+
+            if (!lhmAvailable && !lhmInitAttempted)
+            {
+                TryInitializeLhm();
+            }
+
+            temperatureInfo = lhmAvailable ? ReadFromLhm() : null;
+        }
+
+        internal TemperatureInfo? Get()
+        {
+            return temperatureInfo;
+        }
+
+        internal void Close()
+        {
+            counters?.Close();
+            if (computer is not null)
+            {
+                try
+                {
+                    computer.Close();
+                }
+                catch (Exception exception)
+                {
+                    Debug.WriteLine($"TemperatureRepository LHM Close failed: {exception.Message}");
+                }
+                computer = null;
+            }
+            lhmAvailable = false;
+        }
+
+        private TemperatureInfo? ReadFromCounters()
+        {
+            if (counters is null) return null;
 
             var rawValues = counters.ReadValues();
             var temperaturesCelsius = new List<float>(rawValues.Count);
@@ -108,23 +166,128 @@ namespace RunCat365
                 temperaturesCelsius.Add(temperatureCelsius);
             }
 
-            temperatureInfo = temperaturesCelsius.Count == 0
-                ? null
-                : new TemperatureInfo
+            if (temperaturesCelsius.Count == 0) return null;
+
+            return new TemperatureInfo
+            {
+                AverageCelsius = temperaturesCelsius.Average(),
+                MaximumCelsius = temperaturesCelsius.Max()
+            };
+        }
+
+        private bool TryInitializeLhm()
+        {
+            lhmInitAttempted = true;
+            try
+            {
+                var next = new Computer
                 {
-                    AverageCelsius = temperaturesCelsius.Average(),
-                    MaximumCelsius = temperaturesCelsius.Max()
+                    IsCpuEnabled = true,
                 };
+                next.Open();
+                computer = next;
+
+                var sample = ReadFromLhm();
+                if (sample is null)
+                {
+                    next.Close();
+                    computer = null;
+                    lhmAvailable = false;
+                    Debug.WriteLine("TemperatureRepository: LHM opened but no CPU temperature sensors found.");
+                    return false;
+                }
+
+                temperatureInfo = sample;
+                lhmAvailable = true;
+                return true;
+            }
+            catch (Exception exception)
+            {
+                computer = null;
+                lhmAvailable = false;
+                Debug.WriteLine($"TemperatureRepository: LHM init failed: {exception.Message}");
+                return false;
+            }
         }
 
-        internal TemperatureInfo? Get()
+        private TemperatureInfo? ReadFromLhm()
         {
-            return temperatureInfo;
+            if (computer is null) return null;
+
+            try
+            {
+                float? packageCelsius = null;
+                var coreTemps = new List<float>();
+
+                foreach (var hardware in computer.Hardware)
+                {
+                    CollectCpuTemps(hardware, ref packageCelsius, coreTemps);
+                }
+
+                if (packageCelsius is null && coreTemps.Count == 0) return null;
+
+                var maximum = packageCelsius ?? coreTemps.Max();
+                var average = coreTemps.Count > 0 ? coreTemps.Average() : maximum;
+                return new TemperatureInfo
+                {
+                    AverageCelsius = average,
+                    MaximumCelsius = maximum
+                };
+            }
+            catch (Exception exception)
+            {
+                Debug.WriteLine($"TemperatureRepository: LHM read failed: {exception.Message}");
+                return null;
+            }
         }
 
-        internal void Close()
+        private static void CollectCpuTemps(
+            IHardware hardware,
+            ref float? packageCelsius,
+            List<float> coreTemps
+        )
         {
-            counters?.Close();
+            if (hardware.HardwareType != HardwareType.Cpu)
+            {
+                foreach (var subHardware in hardware.SubHardware)
+                {
+                    CollectCpuTemps(subHardware, ref packageCelsius, coreTemps);
+                }
+                return;
+            }
+
+            hardware.Update();
+            foreach (var sensor in hardware.Sensors)
+            {
+                if (sensor.SensorType != SensorType.Temperature) continue;
+                if (sensor.Value is not float value) continue;
+                if (value is < MIN_VALID_TEMPERATURE_CELSIUS or > MAX_VALID_TEMPERATURE_CELSIUS) continue;
+
+                var name = sensor.Name ?? string.Empty;
+                if (IsPackageSensorName(name))
+                {
+                    packageCelsius = packageCelsius is null
+                        ? value
+                        : Math.Max(packageCelsius.Value, value);
+                }
+                else
+                {
+                    coreTemps.Add(value);
+                }
+            }
+
+            foreach (var subHardware in hardware.SubHardware)
+            {
+                CollectCpuTemps(subHardware, ref packageCelsius, coreTemps);
+            }
+        }
+
+        private static bool IsPackageSensorName(string name)
+        {
+            return name.Contains("Package", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("Tctl", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("CCD", StringComparison.OrdinalIgnoreCase)
+                || name.Equals("CPU", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

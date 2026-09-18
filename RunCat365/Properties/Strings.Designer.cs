@@ -405,6 +405,42 @@ namespace RunCat365.Properties {
             }
         }
 
+        /// <summary>
+        ///   Looks up a localized string similar to Temperature ({0}):.
+        /// </summary>
+        internal static string SystemInfo_TemperatureSourceRootFormat {
+            get {
+                return ResourceManager.GetString("SystemInfo_TemperatureSourceRootFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Temperature: {0} ({1}).
+        /// </summary>
+        internal static string SystemInfo_TemperatureWithSourceFormat {
+            get {
+                return ResourceManager.GetString("SystemInfo_TemperatureWithSourceFormat", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to CPU.
+        /// </summary>
+        internal static string TemperatureSource_Cpu {
+            get {
+                return ResourceManager.GetString("TemperatureSource_Cpu", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to System.
+        /// </summary>
+        internal static string TemperatureSource_System {
+            get {
+                return ResourceManager.GetString("TemperatureSource_System", resourceCulture);
+            }
+        }
+
         internal static string Menu_CustomRunners {
             get {
                 return ResourceManager.GetString("Menu_CustomRunners", resourceCulture);

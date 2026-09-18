@@ -100,14 +100,17 @@ namespace RunCat365
 
     /// <summary>
     /// Prefers Windows "Thermal Zone Information" performance counters.
-    /// Falls back to LibreHardwareMonitor CPU sensors when counters are missing
-    /// or return no valid readings.
+    /// Falls back to LibreHardwareMonitor (CPU + Motherboard/SuperIO sensors)
+    /// when counters are missing or return no valid readings.
+    /// LHM-derived values are labeled as CPU in the UI.
     /// </summary>
     internal class TemperatureRepository
     {
         private const float KELVIN_TO_CELSIUS_OFFSET = 273.15f;
         private const float MIN_VALID_TEMPERATURE_CELSIUS = -50.0f;
         private const float MAX_VALID_TEMPERATURE_CELSIUS = 150.0f;
+        private const float MIN_PLAUSIBLE_CPU_CELSIUS = 5.0f;
+        private const float MAX_PLAUSIBLE_CPU_CELSIUS = 115.0f;
         private const int REFRESH_INTERVAL_TICKS = 30;
 
         private readonly TemperaturePerformanceCounters? counters;
@@ -124,7 +127,12 @@ namespace RunCat365
             counters = TemperaturePerformanceCounters.TryCreate();
             if (counters is null)
             {
+                StartupLog.Append("Temperature: Thermal Zone Information counters unavailable; trying LHM.");
                 TryInitializeLhm();
+            }
+            else
+            {
+                StartupLog.Append("Temperature: Thermal Zone Information counters initialized.");
             }
         }
 
@@ -150,6 +158,7 @@ namespace RunCat365
 
             if (!lhmAvailable && !lhmInitAttempted)
             {
+                StartupLog.Append("Temperature: counters yielded no valid reading; trying LHM.");
                 TryInitializeLhm();
             }
 
@@ -211,6 +220,7 @@ namespace RunCat365
                 var next = new Computer
                 {
                     IsCpuEnabled = true,
+                    IsMotherboardEnabled = true,
                 };
                 next.Open();
                 computer = next;
@@ -218,22 +228,26 @@ namespace RunCat365
                 var sample = ReadFromLhm();
                 if (sample is null)
                 {
+                    var sensorSummary = SummarizeTemperatureSensors(next);
                     next.Close();
                     computer = null;
                     lhmAvailable = false;
-                    Debug.WriteLine("TemperatureRepository: LHM opened but no CPU temperature sensors found.");
+                    StartupLog.Append(
+                        $"Temperature: LHM opened but no usable CPU/Motherboard temperature sensors. {sensorSummary}");
                     return false;
                 }
 
                 temperatureInfo = sample;
                 lhmAvailable = true;
+                StartupLog.Append(
+                    $"Temperature: LHM available (labeled CPU). max={sample.Value.MaximumCelsius:F1}C avg={sample.Value.AverageCelsius:F1}C");
                 return true;
             }
             catch (Exception exception)
             {
                 computer = null;
                 lhmAvailable = false;
-                Debug.WriteLine($"TemperatureRepository: LHM init failed: {exception.Message}");
+                StartupLog.Append($"Temperature: LHM init failed: {exception.GetType().Name}: {exception.Message}");
                 return false;
             }
         }
@@ -246,20 +260,51 @@ namespace RunCat365
             {
                 float? packageCelsius = null;
                 var coreTemps = new List<float>();
+                var motherboardCpuLikeTemps = new List<float>();
+                var motherboardOtherTemps = new List<float>();
 
                 foreach (var hardware in computer.Hardware)
                 {
-                    CollectCpuTemps(hardware, ref packageCelsius, coreTemps);
+                    CollectTemps(
+                        hardware,
+                        ref packageCelsius,
+                        coreTemps,
+                        motherboardCpuLikeTemps,
+                        motherboardOtherTemps);
                 }
 
-                if (packageCelsius is null && coreTemps.Count == 0) return null;
+                if (packageCelsius is not null || coreTemps.Count > 0)
+                {
+                    var maximum = packageCelsius ?? coreTemps.Max();
+                    var average = coreTemps.Count > 0 ? coreTemps.Average() : maximum;
+                    return new TemperatureInfo
+                    {
+                        AverageCelsius = average,
+                        MaximumCelsius = maximum,
+                        Source = TemperatureSource.Cpu
+                    };
+                }
 
-                var maximum = packageCelsius ?? coreTemps.Max();
-                var average = coreTemps.Count > 0 ? coreTemps.Average() : maximum;
+                if (motherboardCpuLikeTemps.Count > 0)
+                {
+                    var maximum = motherboardCpuLikeTemps.Max();
+                    return new TemperatureInfo
+                    {
+                        AverageCelsius = motherboardCpuLikeTemps.Average(),
+                        MaximumCelsius = maximum,
+                        Source = TemperatureSource.Cpu
+                    };
+                }
+
+                var plausible = motherboardOtherTemps
+                    .Where(t => t is >= MIN_PLAUSIBLE_CPU_CELSIUS and <= MAX_PLAUSIBLE_CPU_CELSIUS)
+                    .ToList();
+                if (plausible.Count == 0) return null;
+
                 return new TemperatureInfo
                 {
-                    AverageCelsius = average,
-                    MaximumCelsius = maximum,
+                    AverageCelsius = plausible.Average(),
+                    MaximumCelsius = plausible.Max(),
                     Source = TemperatureSource.Cpu
                 };
             }
@@ -270,45 +315,71 @@ namespace RunCat365
             }
         }
 
-        private static void CollectCpuTemps(
+        private static void CollectTemps(
             IHardware hardware,
             ref float? packageCelsius,
-            List<float> coreTemps
+            List<float> coreTemps,
+            List<float> motherboardCpuLikeTemps,
+            List<float> motherboardOtherTemps
         )
         {
-            if (hardware.HardwareType != HardwareType.Cpu)
+            if (hardware.HardwareType == HardwareType.Cpu)
             {
-                foreach (var subHardware in hardware.SubHardware)
+                hardware.Update();
+                foreach (var sensor in hardware.Sensors)
                 {
-                    CollectCpuTemps(subHardware, ref packageCelsius, coreTemps);
+                    if (!TryReadCelsius(sensor, out var value)) continue;
+                    var name = sensor.Name ?? string.Empty;
+                    if (IsPackageSensorName(name))
+                    {
+                        packageCelsius = packageCelsius is null
+                            ? value
+                            : Math.Max(packageCelsius.Value, value);
+                    }
+                    else
+                    {
+                        coreTemps.Add(value);
+                    }
                 }
-                return;
             }
-
-            hardware.Update();
-            foreach (var sensor in hardware.Sensors)
+            else if (hardware.HardwareType == HardwareType.Motherboard
+                     || hardware.HardwareType == HardwareType.SuperIO)
             {
-                if (sensor.SensorType != SensorType.Temperature) continue;
-                if (sensor.Value is not float value) continue;
-                if (value is < MIN_VALID_TEMPERATURE_CELSIUS or > MAX_VALID_TEMPERATURE_CELSIUS) continue;
-
-                var name = sensor.Name ?? string.Empty;
-                if (IsPackageSensorName(name))
+                hardware.Update();
+                foreach (var sensor in hardware.Sensors)
                 {
-                    packageCelsius = packageCelsius is null
-                        ? value
-                        : Math.Max(packageCelsius.Value, value);
-                }
-                else
-                {
-                    coreTemps.Add(value);
+                    if (!TryReadCelsius(sensor, out var value)) continue;
+                    var name = sensor.Name ?? string.Empty;
+                    if (IsMotherboardCpuLikeName(name))
+                    {
+                        motherboardCpuLikeTemps.Add(value);
+                    }
+                    else
+                    {
+                        motherboardOtherTemps.Add(value);
+                    }
                 }
             }
 
             foreach (var subHardware in hardware.SubHardware)
             {
-                CollectCpuTemps(subHardware, ref packageCelsius, coreTemps);
+                CollectTemps(
+                    subHardware,
+                    ref packageCelsius,
+                    coreTemps,
+                    motherboardCpuLikeTemps,
+                    motherboardOtherTemps);
             }
+        }
+
+        private static bool TryReadCelsius(ISensor sensor, out float value)
+        {
+            value = 0;
+            if (sensor.SensorType != SensorType.Temperature) return false;
+            if (sensor.Value is not float reading) return false;
+            if (reading is < MIN_VALID_TEMPERATURE_CELSIUS or > MAX_VALID_TEMPERATURE_CELSIUS) return false;
+            value = reading;
+            return true;
         }
 
         private static bool IsPackageSensorName(string name)
@@ -317,6 +388,52 @@ namespace RunCat365
                 || name.Contains("Tctl", StringComparison.OrdinalIgnoreCase)
                 || name.Contains("CCD", StringComparison.OrdinalIgnoreCase)
                 || name.Equals("CPU", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsMotherboardCpuLikeName(string name)
+        {
+            return name.Contains("CPU", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("Package", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("Tctl", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("Tdie", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("PECI", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("Core", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string SummarizeTemperatureSensors(Computer computer)
+        {
+            try
+            {
+                var parts = new List<string>();
+                foreach (var hardware in computer.Hardware)
+                {
+                    AppendSensorSummary(hardware, parts);
+                }
+                return parts.Count == 0
+                    ? "hardware=none"
+                    : "seen=" + string.Join("; ", parts.Take(12));
+            }
+            catch (Exception exception)
+            {
+                return $"summary-failed={exception.Message}";
+            }
+        }
+
+        private static void AppendSensorSummary(IHardware hardware, List<string> parts)
+        {
+            hardware.Update();
+            var temps = hardware.Sensors
+                .Where(s => s.SensorType == SensorType.Temperature)
+                .Select(s => $"{s.Name}={(s.Value.HasValue ? s.Value.Value.ToString("F1", CultureInfo.InvariantCulture) : "null")}")
+                .ToList();
+            if (temps.Count > 0)
+            {
+                parts.Add($"{hardware.HardwareType}:{hardware.Name}[{string.Join(",", temps.Take(6))}]");
+            }
+            foreach (var sub in hardware.SubHardware)
+            {
+                AppendSensorSummary(sub, parts);
+            }
         }
     }
 }

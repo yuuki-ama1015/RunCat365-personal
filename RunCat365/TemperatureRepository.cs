@@ -19,10 +19,17 @@ using System.Globalization;
 
 namespace RunCat365
 {
+    enum TemperatureSource
+    {
+        System,
+        Cpu,
+    }
+
     struct TemperatureInfo
     {
         internal float AverageCelsius { get; set; }
         internal float MaximumCelsius { get; set; }
+        internal TemperatureSource Source { get; set; }
     }
 
     internal static class TemperatureInfoExtension
@@ -33,17 +40,37 @@ namespace RunCat365
         internal static string GetDescription(this TemperatureInfo temperatureInfo, TemperatureUnit unit)
         {
             var resolvedUnit = unit.Resolve();
-            return $"{Strings.SystemInfo_Temperature}: {temperatureInfo.MaximumCelsius.ToLocalizedTemperatureText(resolvedUnit)}";
+            var sourceLabel = temperatureInfo.Source.GetLocalizedLabel();
+            var temperatureText = temperatureInfo.MaximumCelsius.ToLocalizedTemperatureText(resolvedUnit);
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                Strings.SystemInfo_TemperatureWithSourceFormat,
+                temperatureText,
+                sourceLabel);
         }
 
         internal static List<string> GenerateIndicator(this TemperatureInfo temperatureInfo, TemperatureUnit unit)
         {
             var resolvedUnit = unit.Resolve();
+            var sourceLabel = temperatureInfo.Source.GetLocalizedLabel();
+            var root = string.Format(
+                CultureInfo.CurrentCulture,
+                Strings.SystemInfo_TemperatureSourceRootFormat,
+                sourceLabel);
             return [
-                TreeFormatter.CreateRoot($"{Strings.SystemInfo_Temperature}:"),
+                TreeFormatter.CreateRoot(root),
                 TreeFormatter.CreateNode($"{Strings.SystemInfo_Average}: {temperatureInfo.AverageCelsius.ToLocalizedTemperatureText(resolvedUnit)}", false),
                 TreeFormatter.CreateNode($"{Strings.SystemInfo_Maximum}: {temperatureInfo.MaximumCelsius.ToLocalizedTemperatureText(resolvedUnit)}", true)
             ];
+        }
+
+        internal static string GetLocalizedLabel(this TemperatureSource source)
+        {
+            return source switch
+            {
+                TemperatureSource.Cpu => Strings.TemperatureSource_Cpu,
+                _ => Strings.TemperatureSource_System,
+            };
         }
 
         private static string ToLocalizedTemperatureText(this float temperatureCelsius, TemperatureUnit resolvedUnit)
@@ -171,7 +198,8 @@ namespace RunCat365
             return new TemperatureInfo
             {
                 AverageCelsius = temperaturesCelsius.Average(),
-                MaximumCelsius = temperaturesCelsius.Max()
+                MaximumCelsius = temperaturesCelsius.Max(),
+                Source = TemperatureSource.System
             };
         }
 
@@ -231,7 +259,8 @@ namespace RunCat365
                 return new TemperatureInfo
                 {
                     AverageCelsius = average,
-                    MaximumCelsius = maximum
+                    MaximumCelsius = maximum,
+                    Source = TemperatureSource.Cpu
                 };
             }
             catch (Exception exception)

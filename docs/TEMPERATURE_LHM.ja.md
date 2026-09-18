@@ -19,3 +19,10 @@ Windows のパフォーマンスカウンタ `Thermal Zone Information` が使�
 
 - 機種・ドライバによっては管理者権限やベンダー固有センサが必要
 - LHM でも取れない場合は非対応のまま
+
+## 出典表示
+
+値が取れているとき、表示に取得元を付ける。
+
+- **システム** … Thermal Zone Information（ACPI ゾーン）
+- **CPU** … LHM フォールバック

@@ -252,6 +252,18 @@
   <data name="SystemInfo_TemperatureFahrenheitFormat" xml:space="preserve">
     <value>{0:f1}°F</value>
   </data>
+  <data name="SystemInfo_TemperatureSourceRootFormat" xml:space="preserve">
+    <value>Temperature ({0}):</value>
+  </data>
+  <data name="SystemInfo_TemperatureWithSourceFormat" xml:space="preserve">
+    <value>Temperature: {0} ({1})</value>
+  </data>
+  <data name="TemperatureSource_Cpu" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="TemperatureSource_System" xml:space="preserve">
+    <value>System</value>
+  </data>
   <data name="Menu_CustomRunners" xml:space="preserve">
     <value>Custom Runners...</value>
   </data>

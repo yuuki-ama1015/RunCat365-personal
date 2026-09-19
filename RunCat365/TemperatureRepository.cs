@@ -13,6 +13,7 @@
 //    limitations under the License.
 
 using System.Diagnostics;
+using System.Threading;
 using LibreHardwareMonitor.Hardware;
 using RunCat365.Properties;
 using System.Globalization;
@@ -225,7 +226,20 @@ namespace RunCat365
                 next.Open();
                 computer = next;
 
-                var sample = ReadFromLhm();
+                // Sensors often appear with null values on the first Update; refresh twice.
+                RefreshLhmSensors(next);
+                Thread.Sleep(100);
+                RefreshLhmSensors(next);
+
+                var sample = ReadFromLhm(refreshFirst: false);
+                if (sample is null)
+                {
+                    // One more delayed pass before giving up.
+                    Thread.Sleep(200);
+                    RefreshLhmSensors(next);
+                    sample = ReadFromLhm(refreshFirst: false);
+                }
+
                 if (sample is null)
                 {
                     var sensorSummary = SummarizeTemperatureSensors(next);
@@ -252,12 +266,17 @@ namespace RunCat365
             }
         }
 
-        private TemperatureInfo? ReadFromLhm()
+        private TemperatureInfo? ReadFromLhm(bool refreshFirst = true)
         {
             if (computer is null) return null;
 
             try
             {
+                if (refreshFirst)
+                {
+                    RefreshLhmSensors(computer);
+                }
+
                 float? packageCelsius = null;
                 var coreTemps = new List<float>();
                 var motherboardCpuLikeTemps = new List<float>();
@@ -270,7 +289,8 @@ namespace RunCat365
                         ref packageCelsius,
                         coreTemps,
                         motherboardCpuLikeTemps,
-                        motherboardOtherTemps);
+                        motherboardOtherTemps,
+                        updateHardware: false);
                 }
 
                 if (packageCelsius is not null || coreTemps.Count > 0)
@@ -315,17 +335,48 @@ namespace RunCat365
             }
         }
 
+        private static void RefreshLhmSensors(Computer computer)
+        {
+            computer.Accept(new LhmUpdateVisitor());
+        }
+
+        private sealed class LhmUpdateVisitor : IVisitor
+        {
+            public void VisitComputer(IComputer computer)
+            {
+                computer.Traverse(this);
+            }
+
+            public void VisitHardware(IHardware hardware)
+            {
+                hardware.Update();
+                foreach (var subHardware in hardware.SubHardware)
+                {
+                    subHardware.Accept(this);
+                }
+            }
+
+            public void VisitSensor(ISensor sensor)
+            {
+            }
+
+            public void VisitParameter(IParameter parameter)
+            {
+            }
+        }
+
         private static void CollectTemps(
             IHardware hardware,
             ref float? packageCelsius,
             List<float> coreTemps,
             List<float> motherboardCpuLikeTemps,
-            List<float> motherboardOtherTemps
+            List<float> motherboardOtherTemps,
+            bool updateHardware = true
         )
         {
             if (hardware.HardwareType == HardwareType.Cpu)
             {
-                hardware.Update();
+                if (updateHardware) hardware.Update();
                 foreach (var sensor in hardware.Sensors)
                 {
                     if (!TryReadCelsius(sensor, out var value)) continue;
@@ -345,7 +396,7 @@ namespace RunCat365
             else if (hardware.HardwareType == HardwareType.Motherboard
                      || hardware.HardwareType == HardwareType.SuperIO)
             {
-                hardware.Update();
+                if (updateHardware) hardware.Update();
                 foreach (var sensor in hardware.Sensors)
                 {
                     if (!TryReadCelsius(sensor, out var value)) continue;
@@ -368,7 +419,8 @@ namespace RunCat365
                     ref packageCelsius,
                     coreTemps,
                     motherboardCpuLikeTemps,
-                    motherboardOtherTemps);
+                    motherboardOtherTemps,
+                    updateHardware);
             }
         }
 
@@ -404,6 +456,7 @@ namespace RunCat365
         {
             try
             {
+                RefreshLhmSensors(computer);
                 var parts = new List<string>();
                 foreach (var hardware in computer.Hardware)
                 {

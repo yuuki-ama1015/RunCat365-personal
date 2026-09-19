@@ -12,6 +12,7 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
+using System.Runtime.InteropServices;
 using RunCat365.Properties;
 using FormsTimer = System.Windows.Forms.Timer;
 
@@ -22,6 +23,9 @@ namespace RunCat365
         private const int ANIMATE_TIMER_DEFAULT_INTERVAL = 200;
         private const int CrossfadeDurationMs = 300;
         private const int CrossfadeIntermediateSteps = 4;
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
         private readonly NotifyIcon notifyIcon = new();
         private readonly List<Icon> icons = [];
         private readonly Lock iconLock = new();
@@ -50,10 +54,13 @@ namespace RunCat365
             notifyIcon.Visible = false;
             // Multiple NotifyIcons cannot reliably share ContextMenuStrip via the
             // property assignment, so show the shared menu manually on right-click.
+            // SetForegroundWindow is required so outside clicks dismiss the menu.
             notifyIcon.MouseUp += (_, e) =>
             {
                 if (e.Button != MouseButtons.Right) return;
+                contextMenuStrip.AutoClose = true;
                 contextMenuStrip.Show(Cursor.Position);
+                _ = SetForegroundWindow(contextMenuStrip.Handle);
             };
 
             animateTimer = new FormsTimer

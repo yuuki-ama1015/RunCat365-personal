@@ -21,6 +21,7 @@ Windows のパフォーマンスカウンタ `Thermal Zone Information` が使�
 
 - NuGet: `LibreHardwareMonitorLib` 0.9.6（MPL-2.0）
 - CPU + Motherboard を有効化（GPU 等は未対応）
+- Open 後にセンサを二重 Update（初回 null 対策）
 
 ## 制限
 

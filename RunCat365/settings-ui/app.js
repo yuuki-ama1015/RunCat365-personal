@@ -419,14 +419,14 @@
       <div class="card-grid">
         <article class="card">
           <h3>ランナー用</h3>
-          <p>アニメーション用フレームセットのライブラリ。</p>
+          <p>走るアニメ用。PNG / GIF（2〜30 コマ）。透過 PNG 推奨。</p>
           <div class="card-actions">
             <a class="btn secondary" href="#assets/runners">開く</a>
           </div>
         </article>
         <article class="card">
           <h3>静止画モード用</h3>
-          <p>静止画モード用の素材ライブラリ。</p>
+          <p>負荷帯ごとの切替用。PNG / GIF（2〜16 枚）。低→高の順。</p>
           <div class="card-actions">
             <a class="btn secondary" href="#assets/stills">開く</a>
           </div>
@@ -689,7 +689,18 @@
 
       view.innerHTML = `
         <h1 class="page-title">${title}</h1>
-        <p class="page-subtitle">静止画モード用の素材ライブラリ（2〜16 枚の透過 PNG）。</p>
+        <p class="page-subtitle">負荷帯ごとに切り替える静止画セットのライブラリ。</p>
+
+        <aside class="guide-box" aria-label="使える素材">
+          <h3 class="guide-title">使える素材</h3>
+          <ul class="guide-list">
+            <li><strong>形式</strong> — PNG（透過推奨）または GIF</li>
+            <li><strong>枚数</strong> — 2〜16 枚（GIF は均等に間引き）</li>
+            <li><strong>並び</strong> — 左（低負荷）→ 右（高負荷）</li>
+            <li><strong>サイズ</strong> — 自動で 32×32 相当に調整</li>
+          </ul>
+        </aside>
+
         <section class="section">
           <h2>登録済み</h2>
           <div class="asset-list">
@@ -776,7 +787,18 @@
 
     view.innerHTML = `
       <h1 class="page-title">${title}</h1>
-      <p class="page-subtitle">アニメーション用フレームセットのライブラリ。</p>
+      <p class="page-subtitle">走るアニメ用フレームセットのライブラリ。</p>
+
+        <aside class="guide-box" aria-label="使える素材">
+          <h3 class="guide-title">使える素材</h3>
+          <ul class="guide-list">
+            <li><strong>形式</strong> — PNG（透過推奨）または GIF</li>
+            <li><strong>枚数</strong> — 2〜30 コマ（GIF は均等に間引き）</li>
+            <li><strong>サイズ</strong> — 自動でトレイ向けに縮小（目安 高さ32px）</li>
+            <li><strong>用途</strong> — 負荷に応じてコマ送りする走りアニメ</li>
+          </ul>
+        </aside>
+
       <section class="section">
         <h2>登録済み</h2>
         <div class="asset-list">
@@ -785,7 +807,7 @@
         </div>
         <div class="empty-action">
           <button class="btn" type="button" data-create-runner>新規作成</button>
-          <p class="hint">既存のカスタムランナー編集ウィンドウでフレームを追加・保存します。</p>
+          <p class="hint">「新規作成」から PNG / GIF を追加できます（編集ウィンドウが開きます）。</p>
         </div>
       </section>
     `;

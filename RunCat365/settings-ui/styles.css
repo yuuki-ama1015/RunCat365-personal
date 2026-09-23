@@ -543,3 +543,35 @@ a {
     position: static;
   }
 }
+
+
+/* Asset usage guide */
+.guide-box {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.35));
+  background: var(--surface-2, rgba(127, 127, 127, 0.08));
+}
+
+.guide-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.guide-list {
+  margin: 0;
+  padding-left: 1.15em;
+  font-size: 12px;
+  line-height: 1.55;
+  opacity: 0.92;
+}
+
+.guide-list li + li {
+  margin-top: 4px;
+}
+
+.guide-list strong {
+  font-weight: 600;
+}

@@ -111,7 +111,7 @@ namespace RunCat365
 
             hintLabel = new Label
             {
-                Text = $"透過 PNG を {StillSetRepository.MIN_FRAME_COUNT}〜{StillSetRepository.MAX_FRAME_COUNT} 枚。トレイ用に自動リサイズします。",
+                Text = $"PNG / GIF を {StillSetRepository.MIN_FRAME_COUNT}〜{StillSetRepository.MAX_FRAME_COUNT} 枚（透過 PNG 推奨）。トレイ用に自動リサイズします。",
                 AutoSize = false,
                 Size = new Size(420, 36),
                 Location = new Point(16, 416),

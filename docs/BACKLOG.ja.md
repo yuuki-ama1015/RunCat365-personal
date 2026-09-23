@@ -4,12 +4,24 @@
 
 引き継ぎ手順は [HANDOFF.ja.md](./HANDOFF.ja.md) を参照。
 
+最終更新: 2026-09-23（personal-v1.0.6 時点）
+
+## 保留中
+
+- **温度の追加調査・実装** — 2026-09-20 ユーザー指示で保留。この PC では Thermal Zone / WMI 空、LHM 値 null、WinRing0 なし。再開時は方針から（詳細は HANDOFF と [TEMPERATURE_LHM.ja.md](./TEMPERATURE_LHM.ja.md)）。
+
 ## 追加を検討（未着手・複雑などの理由で見送り）
 
 - **温度の閾値 UI** — いま内部はおおよそ 40℃→アイドル、95℃→最大。設定画面で変更可能にする案。見送り済み。
 - **背景除去** — 不透明背景の自動除去。隅色キーイング案は出たが複雑なので検討リスト行き。
 - **ミニレール** — サイドバー完全収納が確定済み。やるなら方針変更。
+- **設定ファイル全面再生成（旧 Phase3）** — IndicatorsMigrated 属性は対応済み。全面 Designer 再生成は後回し。
 
 ## すでに入っている主なもの（参照用）
 
-- 設定ウィンドウ（WebView2）、色の変化、静止画モード、なめらか切替、プレビュー、GIF 分割、個人 Release zip（personal-v1.0.0）など。
+- 設定ウィンドウ（WebView2）、色の変化、静止画モード、なめらか切替、プレビュー、GIF 分割
+- 起動安定化（Mutex / startup.log / Network / IndicatorsMigrated）
+- 温度: Thermal Zone + LHM フォールバック + 出典表示（この PC では未取得）
+- トレイ外クリック閉じ
+- 素材ページの使える画像/GIF 案内（v1.0.6）
+- 個人 Release zip（現行 **personal-v1.0.6**）

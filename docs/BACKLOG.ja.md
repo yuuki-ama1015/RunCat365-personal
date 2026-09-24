@@ -4,11 +4,11 @@
 
 引き継ぎ手順は [HANDOFF.ja.md](./HANDOFF.ja.md) を参照。
 
-最終更新: 2026-09-23（personal-v1.0.6 時点）
+最終更新: 2026-09-24（配布は personal-v1.0.6、温度修正を再開）
 
-## 保留中
+## 対応中
 
-- **温度の追加調査・実装** — 2026-09-20 ユーザー指示で保留。この PC では Thermal Zone / WMI 空、LHM 値 null、WinRing0 なし。再開時は方針から（詳細は HANDOFF と [TEMPERATURE_LHM.ja.md](./TEMPERATURE_LHM.ja.md)）。
+- **温度取得の配布反映** — PawnIO 2.1.0 導入 + 管理者実行で実温度を確認済み。案内・ログ・温度値フィルターを修正。常用版の入れ替えと GitHub / Release への反映は未実施（[詳細](./TEMPERATURE_LHM.ja.md)）。
 
 ## 追加を検討（未着手・複雑などの理由で見送り）
 
@@ -21,7 +21,7 @@
 
 - 設定ウィンドウ（WebView2）、色の変化、静止画モード、なめらか切替、プレビュー、GIF 分割
 - 起動安定化（Mutex / startup.log / Network / IndicatorsMigrated）
-- 温度: Thermal Zone + LHM フォールバック + 出典表示（この PC では未取得）
+- 温度: Thermal Zone + LHM フォールバック + 出典表示（この PC では PawnIO 導入 + 管理者実行で取得確認済み）
 - トレイ外クリック閉じ
 - 素材ページの使える画像/GIF 案内（v1.0.6）
 - 個人 Release zip（現行 **personal-v1.0.6**）

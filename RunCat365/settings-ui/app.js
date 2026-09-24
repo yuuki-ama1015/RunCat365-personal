@@ -154,6 +154,8 @@
         id: item.id,
         enabled: !!item.enabled,
         available: item.available !== false,
+        temperatureSetupRequired: !!item.temperatureSetupRequired,
+        temperatureElevationRequired: !!item.temperatureElevationRequired,
         runner: item.runner || "Cat",
         customRunnerName: item.customRunnerName || null,
         colorTintEnabled: !!item.colorTintEnabled,
@@ -180,6 +182,7 @@
       checkbox.checked = available && state.enabled;
       if (hint) {
         hint.hidden = available;
+        hint.textContent = unavailableHint(id, state);
       }
       if (runnerLabel) {
         const preview = runnerPreviewLabel(state);
@@ -280,6 +283,7 @@
     }
     if (hint) {
       hint.hidden = state.available;
+      hint.textContent = unavailableHint(id, state);
     }
     if (runnerPick instanceof HTMLSelectElement) {
       runnerPick.innerHTML = buildRunnerOptionsHtml(state);
@@ -364,6 +368,17 @@
     });
   }
 
+  function unavailableHint(id, state) {
+    if (id !== "temperature") return "このPCでは使えません";
+    if (state?.temperatureSetupRequired) {
+      return "温度取得には PawnIO 2.0 以降が必要です。公式サイト（https://pawnio.eu/）から導入し、RunCat365 を再起動してください。";
+    }
+    if (state?.temperatureElevationRequired) {
+      return "温度取得に管理者権限が必要な場合があります。RunCat365 を終了し、RunCat 365.exe を右クリックして「管理者として実行」してください。";
+    }
+    return "温度を取得できません。PawnIO の動作を確認してください。詳細は startup.log に記録されます。";
+  }
+
   function buildIndicatorCardsHtml() {
     return INDICATORS.map((item) => {
       const state = indicatorState[item.id];
@@ -385,7 +400,7 @@
           </label>
           <a class="btn secondary" href="#indicator/${item.id}">詳しく設定</a>
         </div>
-        <p class="hint unavailable-hint"${hintHidden}>このPCでは使えません</p>
+        <p class="hint unavailable-hint"${hintHidden}>${escapeHtml(unavailableHint(item.id, state))}</p>
       </article>`;
     }).join("");
   }
@@ -460,7 +475,7 @@
               <input type="checkbox" data-enable-toggle="${id}"${checkedAttr}${disabledAttr} />
               トレイに表示
             </label>
-            <p class="hint unavailable-hint"${hintHidden}>このPCでは使えません</p>
+            <p class="hint unavailable-hint"${hintHidden}>${escapeHtml(unavailableHint(id, state))}</p>
           </section>
 
           <section class="section">

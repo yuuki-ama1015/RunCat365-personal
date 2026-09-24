@@ -408,6 +408,8 @@ namespace RunCat365
                             id = ToIndicatorId(speedSource),
                             enabled,
                             available,
+                            temperatureSetupRequired = speedSource == SpeedSource.Temperature && !available && !TemperatureRepository.IsPawnIoReady,
+                            temperatureElevationRequired = speedSource == SpeedSource.Temperature && !available && TemperatureRepository.IsPawnIoReady && !TemperatureRepository.IsAdministrator,
                             runner,
                             customRunnerName,
                             colorTintEnabled = config?.ColorTintEnabled ?? false,

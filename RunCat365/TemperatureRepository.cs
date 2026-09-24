@@ -17,6 +17,8 @@ using System.Threading;
 using LibreHardwareMonitor.Hardware;
 using RunCat365.Properties;
 using System.Globalization;
+using System.Security.Principal;
+using LibreHardwareMonitor.PawnIo;
 
 namespace RunCat365
 {
@@ -123,6 +125,17 @@ namespace RunCat365
 
         internal bool IsAvailable => counters is not null || lhmAvailable;
 
+        internal static bool IsPawnIoReady => PawnIo.IsInstalled && PawnIo.Version >= new Version(2, 0, 0, 0);
+
+        internal static bool IsAdministrator
+        {
+            get
+            {
+                using var identity = WindowsIdentity.GetCurrent();
+                return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+            }
+        }
+
         internal TemperatureRepository()
         {
             counters = TemperaturePerformanceCounters.TryCreate();
@@ -197,7 +210,7 @@ namespace RunCat365
             var temperaturesCelsius = new List<float>(rawValues.Count);
             foreach (var temperatureKelvin in rawValues)
             {
-                if (temperatureKelvin <= 0) continue;
+                if (!float.IsFinite(temperatureKelvin) || temperatureKelvin <= 0) continue;
                 var temperatureCelsius = temperatureKelvin - KELVIN_TO_CELSIUS_OFFSET;
                 if (temperatureCelsius is < MIN_VALID_TEMPERATURE_CELSIUS or > MAX_VALID_TEMPERATURE_CELSIUS) continue;
                 temperaturesCelsius.Add(temperatureCelsius);
@@ -218,13 +231,19 @@ namespace RunCat365
             lhmInitAttempted = true;
             try
             {
+                StartupLog.Append($"Temperature: PawnIO version={PawnIo.Version?.ToString() ?? "not installed"}; administrator={IsAdministrator}.");
+                if (!IsPawnIoReady)
+                {
+                    StartupLog.Append("Temperature: CPU sensor access requires PawnIO 2.0 or later. Install from https://pawnio.eu/ and restart RunCat365.");
+                }
+
                 var next = new Computer
                 {
                     IsCpuEnabled = true,
                     IsMotherboardEnabled = true,
                 };
-                next.Open();
                 computer = next;
+                next.Open();
 
                 // Sensors often appear with null values on the first Update; refresh twice.
                 RefreshLhmSensors(next);
@@ -259,6 +278,8 @@ namespace RunCat365
             }
             catch (Exception exception)
             {
+                try { computer?.Close(); }
+                catch (Exception closeException) { Debug.WriteLine(closeException.Message); }
                 computer = null;
                 lhmAvailable = false;
                 StartupLog.Append($"Temperature: LHM init failed: {exception.GetType().Name}: {exception.Message}");
@@ -428,8 +449,9 @@ namespace RunCat365
         {
             value = 0;
             if (sensor.SensorType != SensorType.Temperature) return false;
+            if (sensor.Name.Contains("Distance to TjMax", StringComparison.OrdinalIgnoreCase)) return false;
             if (sensor.Value is not float reading) return false;
-            if (reading is < MIN_VALID_TEMPERATURE_CELSIUS or > MAX_VALID_TEMPERATURE_CELSIUS) return false;
+            if (!float.IsFinite(reading) || reading is < MIN_VALID_TEMPERATURE_CELSIUS or > MAX_VALID_TEMPERATURE_CELSIUS) return false;
             value = reading;
             return true;
         }

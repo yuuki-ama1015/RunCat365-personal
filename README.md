@@ -26,6 +26,8 @@ Upstream is a cute running cat animation on the Windows Taskbar (`C#` / Win32 / 
 
 解凍して `RunCat 365.exe` を実行してください。設定 UI には [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) が必要です（最近の Windows では多くがプリインストール）。
 
+Windows が温度を公開しない PC で CPU 温度を使うには、[PawnIO 2.0 以降](https://pawnio.eu/) の導入が必要です。初回導入は管理者承認が必要で、導入後に RunCat365 を再起動してください。[温度取得の詳細・確認手順](docs/TEMPERATURE_LHM.ja.md)。
+
 ### ビルド
 
 - 要件: Windows 10 19041.0 以上、.NET 9 SDK / Visual Studio

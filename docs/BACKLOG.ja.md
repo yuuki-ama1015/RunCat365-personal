@@ -4,11 +4,11 @@
 
 引き継ぎ手順は [HANDOFF.ja.md](./HANDOFF.ja.md) を参照。
 
-最終更新: 2026-09-23（personal-v1.0.6 時点）
+最終更新: 2026-09-24（配布は personal-v1.0.6、温度修正を再開）
 
-## 保留中
+## 対応中
 
-- **温度の追加調査・実装** — 2026-09-20 ユーザー指示で保留。この PC では Thermal Zone / WMI 空、LHM 値 null、WinRing0 なし。再開時は方針から（詳細は HANDOFF と [TEMPERATURE_LHM.ja.md](./TEMPERATURE_LHM.ja.md)）。
+- **温度取得** — 2026-09-24 ユーザー依頼で再開。LHM 0.9.6 が必要とする PawnIO が未導入と確認。導入案内・ログと温度値のフィルターを修正。ドライバー導入の承認および導入後の実測確認が残る（[詳細](./TEMPERATURE_LHM.ja.md)）。
 
 ## 追加を検討（未着手・複雑などの理由で見送り）
 

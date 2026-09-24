@@ -127,6 +127,15 @@ namespace RunCat365
 
         internal static bool IsPawnIoReady => PawnIo.IsInstalled && PawnIo.Version >= new Version(2, 0, 0, 0);
 
+        internal static bool IsAdministrator
+        {
+            get
+            {
+                using var identity = WindowsIdentity.GetCurrent();
+                return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+            }
+        }
+
         internal TemperatureRepository()
         {
             counters = TemperaturePerformanceCounters.TryCreate();
@@ -222,9 +231,7 @@ namespace RunCat365
             lhmInitAttempted = true;
             try
             {
-                using var identity = WindowsIdentity.GetCurrent();
-                var isAdministrator = new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
-                StartupLog.Append($"Temperature: PawnIO version={PawnIo.Version?.ToString() ?? "not installed"}; administrator={isAdministrator}.");
+                StartupLog.Append($"Temperature: PawnIO version={PawnIo.Version?.ToString() ?? "not installed"}; administrator={IsAdministrator}.");
                 if (!IsPawnIoReady)
                 {
                     StartupLog.Append("Temperature: CPU sensor access requires PawnIO 2.0 or later. Install from https://pawnio.eu/ and restart RunCat365.");

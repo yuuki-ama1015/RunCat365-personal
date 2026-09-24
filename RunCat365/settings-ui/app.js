@@ -155,6 +155,7 @@
         enabled: !!item.enabled,
         available: item.available !== false,
         temperatureSetupRequired: !!item.temperatureSetupRequired,
+        temperatureElevationRequired: !!item.temperatureElevationRequired,
         runner: item.runner || "Cat",
         customRunnerName: item.customRunnerName || null,
         colorTintEnabled: !!item.colorTintEnabled,
@@ -369,9 +370,13 @@
 
   function unavailableHint(id, state) {
     if (id !== "temperature") return "このPCでは使えません";
-    return state?.temperatureSetupRequired
-      ? "温度取得には PawnIO 2.0 以降が必要です。公式サイト（https://pawnio.eu/）から導入し、RunCat365 を再起動してください。"
-      : "温度を取得できません。PawnIO の動作と実行権限を確認してください。詳細は startup.log に記録されます。";
+    if (state?.temperatureSetupRequired) {
+      return "温度取得には PawnIO 2.0 以降が必要です。公式サイト（https://pawnio.eu/）から導入し、RunCat365 を再起動してください。";
+    }
+    if (state?.temperatureElevationRequired) {
+      return "温度取得に管理者権限が必要な場合があります。RunCat365 を終了し、RunCat 365.exe を右クリックして「管理者として実行」してください。";
+    }
+    return "温度を取得できません。PawnIO の動作を確認してください。詳細は startup.log に記録されます。";
   }
 
   function buildIndicatorCardsHtml() {

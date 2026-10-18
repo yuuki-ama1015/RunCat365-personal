@@ -87,9 +87,13 @@ namespace RunCat365
         {
             try
             {
-                return new Bitmap(filePath);
+                // Load via a memory copy so the PNG file is not locked while the bitmap is alive
+                // (preview/tray caches would otherwise block overwrite/delete of the asset).
+                using var stream = new MemoryStream(File.ReadAllBytes(filePath));
+                using var decoded = new Bitmap(stream);
+                return new Bitmap(decoded);
             }
-            catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException or FileNotFoundException)
+            catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException or IOException or UnauthorizedAccessException)
             {
                 Debug.WriteLine($"Failed to load custom runner frame '{filePath}': {ex.Message}");
                 return null;

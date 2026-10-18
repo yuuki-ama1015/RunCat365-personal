@@ -34,7 +34,8 @@ namespace RunCat365
 
         internal static List<string> GenerateIndicator(this GPUInfo gpuInfo)
         {
-            var hasMemory = gpuInfo.UsedMemory.HasValue;
+            var usedMemory = gpuInfo.UsedMemory;
+            var hasMemory = usedMemory.HasValue;
 
             var resultLines = new List<string>
             {
@@ -43,12 +44,12 @@ namespace RunCat365
                 TreeFormatter.CreateNode($"{Strings.SystemInfo_Maximum}: {gpuInfo.Maximum:f1}%", !hasMemory)
             };
 
-            if (hasMemory)
+            if (usedMemory is long used)
             {
                 // Reuse SystemInfo_Memory + SystemInfo_Used: "Memory: X Used"
                 resultLines.Add(
                     TreeFormatter.CreateNode(
-                        $"{Strings.SystemInfo_Memory}: {gpuInfo.UsedMemory.Value.ToByteFormatted()} {Strings.SystemInfo_Used}",
+                        $"{Strings.SystemInfo_Memory}: {used.ToByteFormatted()} {Strings.SystemInfo_Used}",
                         true
                     )
                 );

@@ -156,7 +156,7 @@ namespace RunCat365
                 if (IsDisposed || !IsHandleCreated) return;
 
                 MessageBox.Show(
-                    $"Failed to initialize settings UI.\n{ex.Message}",
+                    string.Format(Strings.Message_SettingsUIInitFailed, ex.Message),
                     Strings.Message_Warning,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
@@ -568,7 +568,7 @@ namespace RunCat365
             var id = ToIndicatorId(speedSource);
 
             string? imageDataUrl = null;
-            string label = "プレビュー";
+            string label = Strings.Preview_Default;
             int? intervalMs = null;
 
             if (stillMode)
@@ -588,12 +588,12 @@ namespace RunCat365
                     }
                     else
                     {
-                        label = "静止画セットなし";
+                        label = Strings.Preview_NoStillSet;
                     }
                 }
                 else
                 {
-                    label = "静止画セットを選択";
+                    label = Strings.Preview_SelectStillSet;
                 }
             }
             else
@@ -617,7 +617,7 @@ namespace RunCat365
 
                 if (frames.Count == 0)
                 {
-                    label = "素材なし";
+                    label = Strings.Preview_NoAsset;
                 }
                 else
                 {

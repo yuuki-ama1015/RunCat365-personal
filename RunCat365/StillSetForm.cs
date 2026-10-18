@@ -52,7 +52,7 @@ namespace RunCat365
             this.onDeleted = onDeleted;
             initialName = editName;
 
-            Text = "静止画モード用 — 編集";
+            Text = Strings.StillSet_WindowTitle;
             Icon = Resources.AppIcon;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -72,7 +72,7 @@ namespace RunCat365
         {
             var nameLabel = new Label
             {
-                Text = "名前",
+                Text = Strings.StillSet_Name,
                 AutoSize = true,
                 Location = new Point(16, 16)
             };
@@ -89,7 +89,7 @@ namespace RunCat365
 
             var framesLabel = new Label
             {
-                Text = "フレーム（低負荷 → 高負荷）",
+                Text = Strings.StillSet_FramesLabel,
                 AutoSize = true,
                 Location = new Point(16, 78)
             };
@@ -104,27 +104,27 @@ namespace RunCat365
                 WrapContents = true
             };
 
-            addButton = CreateButton("追加…", new Point(348, 102), AddFrames);
-            removeButton = CreateButton("削除", new Point(348, 140), RemoveSelected);
-            moveUpButton = CreateButton("上へ", new Point(348, 178), () => MoveSelected(-1));
-            moveDownButton = CreateButton("下へ", new Point(348, 216), () => MoveSelected(1));
+            addButton = CreateButton(Strings.StillSet_Add, new Point(348, 102), AddFrames);
+            removeButton = CreateButton(Strings.StillSet_Remove, new Point(348, 140), RemoveSelected);
+            moveUpButton = CreateButton(Strings.StillSet_MoveUp, new Point(348, 178), () => MoveSelected(-1));
+            moveDownButton = CreateButton(Strings.StillSet_MoveDown, new Point(348, 216), () => MoveSelected(1));
 
             hintLabel = new Label
             {
-                Text = $"PNG / GIF を {StillSetRepository.MIN_FRAME_COUNT}〜{StillSetRepository.MAX_FRAME_COUNT} 枚（透過 PNG 推奨）。トレイ用に自動リサイズします。",
+                Text = string.Format(Strings.StillSet_RequirementsFormat, StillSetRepository.MIN_FRAME_COUNT, StillSetRepository.MAX_FRAME_COUNT),
                 AutoSize = false,
                 Size = new Size(420, 36),
                 Location = new Point(16, 416),
                 ForeColor = Color.FromArgb(170, 170, 170)
             };
 
-            saveButton = CreateButton("保存", new Point(248, 464), SaveSet);
+            saveButton = CreateButton(Strings.StillSet_Save, new Point(248, 464), SaveSet);
             saveButton.Size = new Size(90, 28);
-            deleteButton = CreateButton("削除…", new Point(348, 464), DeleteSet);
+            deleteButton = CreateButton(Strings.StillSet_Delete, new Point(348, 464), DeleteSet);
             deleteButton.Size = new Size(90, 28);
             deleteButton.Enabled = !string.IsNullOrEmpty(initialName);
 
-            var closeButton = CreateButton("閉じる", new Point(16, 464), Close);
+            var closeButton = CreateButton(Strings.StillSet_Close, new Point(16, 464), Close);
             closeButton.Size = new Size(90, 28);
 
             Controls.AddRange(
@@ -250,7 +250,7 @@ namespace RunCat365
             {
                 Filter = "Images|*.png;*.gif|PNG (*.png)|*.png|GIF (*.gif)|*.gif",
                 Multiselect = true,
-                Title = "静止画モード用フレームを選択"
+                Title = Strings.StillSet_SelectFramesTitle
             };
             if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
@@ -301,8 +301,8 @@ namespace RunCat365
             {
                 MessageBox.Show(
                     this,
-                    "GIFの読み込みに失敗しました。",
-                    "警告",
+                    Strings.Gif_LoadFailed,
+                    Strings.Message_Warning,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
                 );
@@ -315,8 +315,8 @@ namespace RunCat365
                 GifFrameExtractor.DisposeAll(extracted);
                 MessageBox.Show(
                     this,
-                    $"GIFのフレーム数が不足しています。最低 {StillSetRepository.MIN_FRAME_COUNT} 枚必要です。（現在 {count} 枚）",
-                    "警告",
+                    string.Format(Strings.Gif_NotEnoughFramesFormat, StillSetRepository.MIN_FRAME_COUNT, count),
+                    Strings.Message_Warning,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
                 );
@@ -369,8 +369,8 @@ namespace RunCat365
                 && count <= StillSetRepository.MAX_FRAME_COUNT
                 && !string.IsNullOrWhiteSpace(nameTextBox.Text);
             hintLabel.Text = count is >= StillSetRepository.MIN_FRAME_COUNT and <= StillSetRepository.MAX_FRAME_COUNT
-                ? $"透過 PNG を {StillSetRepository.MIN_FRAME_COUNT}〜{StillSetRepository.MAX_FRAME_COUNT} 枚。トレイ用に自動リサイズします。（{count} 枚）"
-                : $"透過 PNG を {StillSetRepository.MIN_FRAME_COUNT}〜{StillSetRepository.MAX_FRAME_COUNT} 枚必要です。（現在 {count} 枚）";
+                ? string.Format(Strings.StillSet_HintOkFormat, StillSetRepository.MIN_FRAME_COUNT, StillSetRepository.MAX_FRAME_COUNT, count)
+                : string.Format(Strings.StillSet_HintNeedFormat, StillSetRepository.MIN_FRAME_COUNT, StillSetRepository.MAX_FRAME_COUNT, count);
         }
 
         private void SaveSet()
@@ -379,7 +379,7 @@ namespace RunCat365
             var nameError = AssetNameValidator.Validate(name);
             if (nameError is not null)
             {
-                MessageBox.Show(this, nameError, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, nameError, Strings.Message_Warning, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             if (pendingFrames.Count < StillSetRepository.MIN_FRAME_COUNT
@@ -387,8 +387,8 @@ namespace RunCat365
             {
                 MessageBox.Show(
                     this,
-                    $"フレームは {StillSetRepository.MIN_FRAME_COUNT}〜{StillSetRepository.MAX_FRAME_COUNT} 枚にしてください。",
-                    "警告",
+                    string.Format(Strings.StillSet_FrameCountFormat, StillSetRepository.MIN_FRAME_COUNT, StillSetRepository.MAX_FRAME_COUNT),
+                    Strings.Message_Warning,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
                 );
@@ -399,8 +399,8 @@ namespace RunCat365
                 && repository.Exists(name)
                 && MessageBox.Show(
                     this,
-                    $"「{name}」は既にあります。上書きしますか？",
-                    "確認",
+                    string.Format(Strings.StillSet_ConfirmOverwriteFormat, name),
+                    Strings.Message_Confirm,
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question
                 ) != DialogResult.Yes)
@@ -410,7 +410,7 @@ namespace RunCat365
 
             if (!repository.Save(name, pendingFrames))
             {
-                MessageBox.Show(this, "保存に失敗しました。", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, Strings.Asset_SaveFailed, Strings.Message_Warning, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -425,8 +425,8 @@ namespace RunCat365
             if (string.IsNullOrWhiteSpace(name) || !repository.Exists(name)) return;
             if (MessageBox.Show(
                     this,
-                    $"「{name}」を削除しますか？",
-                    "確認",
+                    string.Format(Strings.StillSet_ConfirmDeleteFormat, name),
+                    Strings.Message_Confirm,
                     MessageBoxButtons.YesNo,
                     MessageBoxIcon.Question
                 ) != DialogResult.Yes)

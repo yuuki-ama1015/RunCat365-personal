@@ -339,4 +339,94 @@
   <data name="AssetName_Reserved" xml:space="preserve">
     <value>Windows の予約名（CON, PRN, AUX, NUL, COM1〜9, LPT1〜9）は使えません。</value>
   </data>
+  <data name="Asset_SaveFailed" xml:space="preserve">
+    <value>保存に失敗しました。</value>
+  </data>
+  <data name="Message_Confirm" xml:space="preserve">
+    <value>確認</value>
+  </data>
+  <data name="Message_AlreadyRunning" xml:space="preserve">
+    <value>RunCat 365 はすでに起動しています。</value>
+  </data>
+  <data name="Message_StartupFailed" xml:space="preserve">
+    <value>RunCat 365 の起動に失敗しました。
+
+詳細は startup.log を確認してください。</value>
+  </data>
+  <data name="Message_StartupErrorTitle" xml:space="preserve">
+    <value>RunCat 365 - 起動エラー</value>
+  </data>
+  <data name="Message_SettingsUIInitFailed" xml:space="preserve">
+    <value>設定画面を初期化できませんでした。
+{0}</value>
+  </data>
+  <data name="Gif_LoadFailed" xml:space="preserve">
+    <value>GIFの読み込みに失敗しました。</value>
+  </data>
+  <data name="Gif_NotEnoughFramesFormat" xml:space="preserve">
+    <value>GIFのフレーム数が不足しています。最低 {0} 枚必要です。（現在 {1} 枚）</value>
+  </data>
+  <data name="Preview_Default" xml:space="preserve">
+    <value>プレビュー</value>
+  </data>
+  <data name="Preview_NoStillSet" xml:space="preserve">
+    <value>静止画セットなし</value>
+  </data>
+  <data name="Preview_SelectStillSet" xml:space="preserve">
+    <value>静止画セットを選択</value>
+  </data>
+  <data name="Preview_NoAsset" xml:space="preserve">
+    <value>素材なし</value>
+  </data>
+  <data name="StillSet_WindowTitle" xml:space="preserve">
+    <value>静止画モード用 — 編集</value>
+  </data>
+  <data name="StillSet_Name" xml:space="preserve">
+    <value>名前</value>
+  </data>
+  <data name="StillSet_FramesLabel" xml:space="preserve">
+    <value>フレーム（低負荷 → 高負荷）</value>
+  </data>
+  <data name="StillSet_Add" xml:space="preserve">
+    <value>追加…</value>
+  </data>
+  <data name="StillSet_Remove" xml:space="preserve">
+    <value>削除</value>
+  </data>
+  <data name="StillSet_MoveUp" xml:space="preserve">
+    <value>上へ</value>
+  </data>
+  <data name="StillSet_MoveDown" xml:space="preserve">
+    <value>下へ</value>
+  </data>
+  <data name="StillSet_RequirementsFormat" xml:space="preserve">
+    <value>PNG / GIF を {0}〜{1} 枚（透過 PNG 推奨）。トレイ用に自動リサイズします。</value>
+  </data>
+  <data name="StillSet_Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="StillSet_Delete" xml:space="preserve">
+    <value>削除…</value>
+  </data>
+  <data name="StillSet_Close" xml:space="preserve">
+    <value>閉じる</value>
+  </data>
+  <data name="StillSet_SelectFramesTitle" xml:space="preserve">
+    <value>静止画モード用フレームを選択</value>
+  </data>
+  <data name="StillSet_HintOkFormat" xml:space="preserve">
+    <value>透過 PNG を {0}〜{1} 枚。トレイ用に自動リサイズします。（{2} 枚）</value>
+  </data>
+  <data name="StillSet_HintNeedFormat" xml:space="preserve">
+    <value>透過 PNG を {0}〜{1} 枚必要です。（現在 {2} 枚）</value>
+  </data>
+  <data name="StillSet_FrameCountFormat" xml:space="preserve">
+    <value>フレームは {0}〜{1} 枚にしてください。</value>
+  </data>
+  <data name="StillSet_ConfirmOverwriteFormat" xml:space="preserve">
+    <value>「{0}」は既にあります。上書きしますか？</value>
+  </data>
+  <data name="StillSet_ConfirmDeleteFormat" xml:space="preserve">
+    <value>「{0}」を削除しますか？</value>
+  </data>
 </root>

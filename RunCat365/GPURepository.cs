@@ -96,6 +96,8 @@ namespace RunCat365
 
         private readonly GPUPerformanceCounters? counters;
         private readonly GPUAdapterMemoryPerformanceCounters? memoryCounters;
+        // Written by Update() on the background fetch, read by Get() on the UI thread.
+        private readonly object stateLock = new();
         private readonly List<GPUInfo> gpuInfoList = [];
         private int ticksSinceLastRefresh;
 
@@ -130,24 +132,31 @@ namespace RunCat365
 
             ApplyMemoryInfo(ref gpuInfo);
 
-            gpuInfoList.Add(gpuInfo);
-            if (GPU_INFO_LIST_LIMIT_SIZE < gpuInfoList.Count)
+            lock (stateLock)
             {
-                gpuInfoList.RemoveAt(0);
+                gpuInfoList.Add(gpuInfo);
+                if (GPU_INFO_LIST_LIMIT_SIZE < gpuInfoList.Count)
+                {
+                    gpuInfoList.RemoveAt(0);
+                }
             }
         }
 
         internal GPUInfo? Get()
         {
-            if (counters is null || gpuInfoList.Count == 0) return null;
-
-            var latest = gpuInfoList[^1];
-            return new GPUInfo
+            if (counters is null) return null;
+            lock (stateLock)
             {
-                Average = gpuInfoList.Average(x => x.Average),
-                Maximum = gpuInfoList.Max(x => x.Maximum),
-                UsedMemory = latest.UsedMemory
-            };
+                if (gpuInfoList.Count == 0) return null;
+
+                var latest = gpuInfoList[^1];
+                return new GPUInfo
+                {
+                    Average = gpuInfoList.Average(x => x.Average),
+                    Maximum = gpuInfoList.Max(x => x.Maximum),
+                    UsedMemory = latest.UsedMemory
+                };
+            }
         }
 
         internal void Close()

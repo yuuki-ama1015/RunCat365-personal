@@ -93,7 +93,7 @@
       .map((runner) => {
         const value = `builtin:${runner.id}`;
         const selectedAttr = value === selected ? " selected" : "";
-        return `<option value="${value}"${selectedAttr}>${runner.label}（組み込み）</option>`;
+        return `<option value="${escapeHtml(value)}"${selectedAttr}>${escapeHtml(runner.label)}（組み込み）</option>`;
       })
       .join("");
     const customOptions = runnersCatalog.custom
@@ -101,7 +101,7 @@
         const value = `custom:${runner.name}`;
         const selectedAttr = value === selected ? " selected" : "";
         const escaped = escapeHtml(runner.name);
-        return `<option value="${value}"${selectedAttr}>${escaped}（カスタム）</option>`;
+        return `<option value="${escapeHtml(value)}"${selectedAttr}>${escaped}（カスタム）</option>`;
       })
       .join("");
     return builtinOptions + customOptions;
@@ -127,7 +127,8 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function clampStrength(value) {

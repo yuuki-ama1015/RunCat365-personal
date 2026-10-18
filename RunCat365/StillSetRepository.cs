@@ -55,12 +55,13 @@ namespace RunCat365
             var profile = GetByName(name);
             if (profile is null) return [];
 
-            var setDirectory = Path.Combine(basePath, SanitizeDirectoryName(name));
+            var setDirectory = GetAssetDirectory(name);
+            if (setDirectory is null) return [];
             var frames = new List<Bitmap>();
             foreach (var fileName in profile.FrameFileNames)
             {
-                var filePath = Path.Combine(setDirectory, fileName);
-                if (!File.Exists(filePath)) continue;
+                var filePath = ResolveFramePath(setDirectory, fileName);
+                if (filePath is null || !File.Exists(filePath)) continue;
                 var frame = TryLoadBitmap(filePath);
                 if (frame is not null) frames.Add(frame);
             }
@@ -71,9 +72,10 @@ namespace RunCat365
         {
             var profile = GetByName(name);
             if (profile is null || profile.FrameFileNames.Count == 0) return null;
-            var setDirectory = Path.Combine(basePath, SanitizeDirectoryName(name));
-            var filePath = Path.Combine(setDirectory, profile.FrameFileNames[0]);
-            return File.Exists(filePath) ? TryLoadBitmap(filePath) : null;
+            var setDirectory = GetAssetDirectory(name);
+            if (setDirectory is null) return null;
+            var filePath = ResolveFramePath(setDirectory, profile.FrameFileNames[0]);
+            return filePath is not null && File.Exists(filePath) ? TryLoadBitmap(filePath) : null;
         }
 
         private static Bitmap? TryLoadBitmap(string filePath)
@@ -91,10 +93,11 @@ namespace RunCat365
 
         internal bool Save(string name, List<Bitmap> frames)
         {
-            if (string.IsNullOrWhiteSpace(name)) return false;
+            if (!AssetNameValidator.IsValid(name)) return false;
             if (frames.Count < MIN_FRAME_COUNT || frames.Count > MAX_FRAME_COUNT) return false;
 
-            var setDirectory = Path.Combine(basePath, SanitizeDirectoryName(name));
+            var setDirectory = GetAssetDirectory(name);
+            if (setDirectory is null) return false;
             Directory.CreateDirectory(setDirectory);
 
             var existingProfile = GetByName(name);
@@ -124,10 +127,10 @@ namespace RunCat365
             if (profile is null) return false;
 
             DeleteFrameFiles(profile);
-            var setDirectory = Path.Combine(basePath, SanitizeDirectoryName(name));
+            var setDirectory = GetAssetDirectory(name);
             try
             {
-                if (Directory.Exists(setDirectory))
+                if (setDirectory is not null && Directory.Exists(setDirectory))
                 {
                     Directory.Delete(setDirectory, true);
                 }
@@ -196,10 +199,12 @@ namespace RunCat365
 
         private void DeleteFrameFiles(StillSetProfile profile)
         {
-            var setDirectory = Path.Combine(basePath, SanitizeDirectoryName(profile.Name));
+            var setDirectory = GetAssetDirectory(profile.Name);
+            if (setDirectory is null) return;
             foreach (var fileName in profile.FrameFileNames)
             {
-                var filePath = Path.Combine(setDirectory, fileName);
+                var filePath = ResolveFramePath(setDirectory, fileName);
+                if (filePath is null) continue;
                 try
                 {
                     File.Delete(filePath);
@@ -234,6 +239,22 @@ namespace RunCat365
             var y = (TRAY_SIZE - newHeight) / 2;
             graphics.DrawImage(original, x, y, newWidth, newHeight);
             return canvas;
+        }
+
+        /// <summary>
+        /// Storage directory for an asset, or null when the name would resolve outside basePath
+        /// (e.g. "." / ".."). Never delete or write when this returns null.
+        /// </summary>
+        private string? GetAssetDirectory(string name)
+        {
+            return AssetNameValidator.ResolveChildDirectory(basePath, SanitizeDirectoryName(name));
+        }
+
+        private static string? ResolveFramePath(string directory, string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName) || fileName != Path.GetFileName(fileName)) return null;
+            if (fileName.All(c => c == '.')) return null;
+            return Path.Combine(directory, fileName);
         }
 
         private static string SanitizeDirectoryName(string name)

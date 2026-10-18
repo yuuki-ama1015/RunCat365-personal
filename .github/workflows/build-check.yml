@@ -1,0 +1,30 @@
+name: Build Check
+
+# Compile-only check for PRs and fix branches. Does not publish or create releases.
+on:
+  pull_request:
+  push:
+    branches:
+      - "fix/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Build
+        run: dotnet build RunCat365/RunCat365.csproj -c Release -p:Platform=x64

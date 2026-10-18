@@ -321,4 +321,22 @@
   <data name="Window_Settings" xml:space="preserve">
     <value>Settings</value>
   </data>
+  <data name="AssetName_Empty" xml:space="preserve">
+    <value>Please enter a name.</value>
+  </data>
+  <data name="AssetName_LeadingTrailingSpace" xml:space="preserve">
+    <value>The name cannot start or end with a space.</value>
+  </data>
+  <data name="AssetName_TrailingDot" xml:space="preserve">
+    <value>The name cannot end with a period (.).</value>
+  </data>
+  <data name="AssetName_DotsOnly" xml:space="preserve">
+    <value>The name cannot consist only of periods.</value>
+  </data>
+  <data name="AssetName_InvalidChars" xml:space="preserve">
+    <value>The name contains characters that cannot be used in file names (\ / : * ? " &lt; &gt; |).</value>
+  </data>
+  <data name="AssetName_Reserved" xml:space="preserve">
+    <value>This name is reserved by Windows (CON, PRN, AUX, NUL, COM1–9, LPT1–9).</value>
+  </data>
 </root>

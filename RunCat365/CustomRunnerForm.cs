@@ -845,6 +845,18 @@ namespace RunCat365
             if (string.IsNullOrWhiteSpace(name)) return;
             if (pendingFrames.Count < CustomRunnerRepository.MIN_FRAME_COUNT) return;
 
+            var nameError = AssetNameValidator.Validate(name);
+            if (nameError is not null)
+            {
+                MessageBox.Show(
+                    nameError,
+                    Strings.Message_Warning,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                return;
+            }
+
             if (repository.Exists(name))
             {
                 var result = MessageBox.Show(

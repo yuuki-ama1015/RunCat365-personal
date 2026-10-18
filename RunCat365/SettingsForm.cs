@@ -43,6 +43,9 @@ namespace RunCat365
         private readonly WebView2 webView = new();
         private bool isInitialized;
         private bool isWebViewReady;
+        // Built-in runner frames for the preview, loaded once per runner and disposed with the form.
+        // ResourceManager.GetObject returns a new Bitmap on every call, so reloading per tick leaks GDI memory.
+        private readonly Dictionary<Runner, List<Bitmap>> builtInPreviewFrames = [];
 
         internal SettingsForm(
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
@@ -167,9 +170,8 @@ namespace RunCat365
             {
                 using var document = JsonDocument.Parse(e.WebMessageAsJson);
                 var root = document.RootElement;
-                if (!root.TryGetProperty("type", out var typeElement)) return;
-
-                var type = typeElement.GetString();
+                if (root.ValueKind != JsonValueKind.Object) return;
+                if (!TryGetString(root, "type", out var type)) return;
                 if (type == "getIndicators")
                 {
                     PostIndicatorsState();
@@ -178,21 +180,21 @@ namespace RunCat365
 
                 if (type == "setIndicatorEnabled")
                 {
-                    if (!root.TryGetProperty("id", out var idElement)) return;
-                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
-                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+                    if (!TryGetString(root, "id", out var indicatorId)) return;
+                    if (!TryGetBoolean(root, "enabled", out var enabled)) return;
+                    if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
 
-                    setIndicatorEnabled(speedSource, enabledElement.GetBoolean());
+                    setIndicatorEnabled(speedSource, enabled);
                     PostIndicatorsState();
                     return;
                 }
 
                 if (type == "setRunner")
                 {
-                    if (!root.TryGetProperty("id", out var idElement)) return;
-                    if (!root.TryGetProperty("runner", out var runnerElement)) return;
-                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
-                    if (!Enum.TryParse(runnerElement.GetString(), ignoreCase: true, out Runner runner)) return;
+                    if (!TryGetString(root, "id", out var indicatorId)) return;
+                    if (!TryGetString(root, "runner", out var runnerId)) return;
+                    if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
+                    if (!Enum.TryParse(runnerId, ignoreCase: true, out Runner runner) || !Enum.IsDefined(runner)) return;
 
                     setIndicatorRunner(speedSource, runner);
                     PostIndicatorsState();
@@ -201,55 +203,54 @@ namespace RunCat365
 
                 if (type == "setColorTintEnabled")
                 {
-                    if (!root.TryGetProperty("id", out var idElement)) return;
-                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
-                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+                    if (!TryGetString(root, "id", out var indicatorId)) return;
+                    if (!TryGetBoolean(root, "enabled", out var enabled)) return;
+                    if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
 
-                    setColorTintEnabled(speedSource, enabledElement.GetBoolean());
+                    setColorTintEnabled(speedSource, enabled);
                     PostIndicatorsState();
                     return;
                 }
 
                 if (type == "setColorTintStrength")
                 {
-                    if (!root.TryGetProperty("id", out var idElement)) return;
-                    if (!root.TryGetProperty("strength", out var strengthElement)) return;
-                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+                    if (!TryGetString(root, "id", out var indicatorId)) return;
+                    if (!TryGetInt32(root, "strength", out var strength)) return;
+                    if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
 
-                    setColorTintStrength(speedSource, strengthElement.GetInt32());
+                    setColorTintStrength(speedSource, strength);
                     PostIndicatorsState();
                     return;
                 }
 
                 if (type == "setRunnerSpeedEnabled")
                 {
-                    if (!root.TryGetProperty("id", out var idElement)) return;
-                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
-                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+                    if (!TryGetString(root, "id", out var indicatorId)) return;
+                    if (!TryGetBoolean(root, "enabled", out var enabled)) return;
+                    if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
 
-                    setRunnerSpeedEnabled(speedSource, enabledElement.GetBoolean());
+                    setRunnerSpeedEnabled(speedSource, enabled);
                     PostIndicatorsState();
                     return;
                 }
 
                 if (type == "setStillModeEnabled")
                 {
-                    if (!root.TryGetProperty("id", out var idElement)) return;
-                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
-                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+                    if (!TryGetString(root, "id", out var indicatorId)) return;
+                    if (!TryGetBoolean(root, "enabled", out var enabled)) return;
+                    if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
 
-                    setStillModeEnabled(speedSource, enabledElement.GetBoolean());
+                    setStillModeEnabled(speedSource, enabled);
                     PostIndicatorsState();
                     return;
                 }
 
                 if (type == "setStillSet")
                 {
-                    if (!root.TryGetProperty("id", out var idElement)) return;
-                    if (!root.TryGetProperty("name", out var nameElement)) return;
-                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+                    if (!TryGetString(root, "id", out var indicatorId)) return;
+                    if (!TryGetString(root, "name", out var name)) return;
+                    if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
 
-                    var name = nameElement.GetString();
                     if (string.IsNullOrWhiteSpace(name)) return;
 
                     setStillSet(speedSource, name);
@@ -259,22 +260,21 @@ namespace RunCat365
 
                 if (type == "setStillCrossfadeEnabled")
                 {
-                    if (!root.TryGetProperty("id", out var idElement)) return;
-                    if (!root.TryGetProperty("enabled", out var enabledElement)) return;
-                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+                    if (!TryGetString(root, "id", out var indicatorId)) return;
+                    if (!TryGetBoolean(root, "enabled", out var enabled)) return;
+                    if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
 
-                    setStillCrossfadeEnabled(speedSource, enabledElement.GetBoolean());
+                    setStillCrossfadeEnabled(speedSource, enabled);
                     PostIndicatorsState();
                     return;
                 }
 
                 if (type == "setCustomRunner")
                 {
-                    if (!root.TryGetProperty("id", out var idElement)) return;
-                    if (!root.TryGetProperty("name", out var nameElement)) return;
-                    if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+                    if (!TryGetString(root, "id", out var indicatorId)) return;
+                    if (!TryGetString(root, "name", out var name)) return;
+                    if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
 
-                    var name = nameElement.GetString();
                     if (string.IsNullOrWhiteSpace(name)) return;
 
                     applyCustomRunner(speedSource, name);
@@ -285,10 +285,10 @@ namespace RunCat365
                 if (type == "openCustomRunnerEditor")
                 {
                     string? selectName = null;
-                    if (root.TryGetProperty("name", out var nameElement))
+                    if (TryGetString(root, "name", out var requestedName)
+                        && !string.IsNullOrWhiteSpace(requestedName))
                     {
-                        selectName = nameElement.GetString();
-                        if (string.IsNullOrWhiteSpace(selectName)) selectName = null;
+                        selectName = requestedName;
                     }
                     openCustomRunnerEditor(selectName);
                     return;
@@ -296,8 +296,7 @@ namespace RunCat365
 
                 if (type == "deleteCustomRunner")
                 {
-                    if (!root.TryGetProperty("name", out var nameElement)) return;
-                    var name = nameElement.GetString();
+                    if (!TryGetString(root, "name", out var name)) return;
                     if (string.IsNullOrWhiteSpace(name)) return;
 
                     if (customRunnerRepository.Delete(name))
@@ -311,10 +310,10 @@ namespace RunCat365
                 if (type == "openStillSetEditor")
                 {
                     string? selectName = null;
-                    if (root.TryGetProperty("name", out var nameElement))
+                    if (TryGetString(root, "name", out var requestedName)
+                        && !string.IsNullOrWhiteSpace(requestedName))
                     {
-                        selectName = nameElement.GetString();
-                        if (string.IsNullOrWhiteSpace(selectName)) selectName = null;
+                        selectName = requestedName;
                     }
                     openStillSetEditor(selectName);
                     return;
@@ -322,8 +321,7 @@ namespace RunCat365
 
                 if (type == "deleteStillSet")
                 {
-                    if (!root.TryGetProperty("name", out var nameElement)) return;
-                    var name = nameElement.GetString();
+                    if (!TryGetString(root, "name", out var name)) return;
                     if (string.IsNullOrWhiteSpace(name)) return;
 
                     if (stillSetRepository.Delete(name))
@@ -348,6 +346,43 @@ namespace RunCat365
             catch (InvalidOperationException) when (IsDisposed || webView.IsDisposed)
             {
             }
+            catch (Exception ex)
+            {
+                // A malformed message or a failing handler must never take down the tray app.
+                StartupLog.Append($"SettingsForm: web message handling failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        private static bool TryGetString(JsonElement root, string propertyName, out string value)
+        {
+            value = string.Empty;
+            if (!root.TryGetProperty(propertyName, out var element)) return false;
+            if (element.ValueKind != JsonValueKind.String) return false;
+            value = element.GetString() ?? string.Empty;
+            return true;
+        }
+
+        private static bool TryGetBoolean(JsonElement root, string propertyName, out bool value)
+        {
+            value = false;
+            if (!root.TryGetProperty(propertyName, out var element)) return false;
+            if (element.ValueKind is not (JsonValueKind.True or JsonValueKind.False)) return false;
+            value = element.GetBoolean();
+            return true;
+        }
+
+        private static bool TryGetInt32(JsonElement root, string propertyName, out int value)
+        {
+            value = 0;
+            if (!root.TryGetProperty(propertyName, out var element)) return false;
+            if (element.ValueKind != JsonValueKind.Number) return false;
+            if (element.TryGetInt32(out value)) return true;
+            if (element.TryGetDouble(out var number) && double.IsFinite(number))
+            {
+                value = (int)Math.Clamp(Math.Round(number), int.MinValue, int.MaxValue);
+                return true;
+            }
+            return false;
         }
 
         internal void NotifyIndicatorsChanged()
@@ -459,22 +494,24 @@ namespace RunCat365
 
         private void HandleGetPreview(JsonElement root)
         {
-            if (!root.TryGetProperty("id", out var idElement)) return;
-            if (!TryParseIndicatorId(idElement.GetString(), out var speedSource)) return;
+            if (!TryGetString(root, "id", out var indicatorId)) return;
+            if (!TryParseIndicatorId(indicatorId, out var speedSource)) return;
 
             var load = 0f;
             if (root.TryGetProperty("load", out var loadElement)
                 && loadElement.ValueKind == JsonValueKind.Number)
             {
-                load = loadElement.GetSingle();
+                if (loadElement.TryGetSingle(out var parsedLoad) && float.IsFinite(parsedLoad))
+                {
+                    load = parsedLoad;
+                }
             }
             load = Math.Clamp(load, 0f, 100f);
 
             var tick = 0;
-            if (root.TryGetProperty("tick", out var tickElement)
-                && tickElement.ValueKind == JsonValueKind.Number)
+            if (TryGetInt32(root, "tick", out var parsedTick))
             {
-                tick = Math.Max(0, tickElement.GetInt32());
+                tick = Math.Max(0, parsedTick);
             }
 
             if (!isWebViewReady || webView.CoreWebView2 is null) return;
@@ -552,8 +589,8 @@ namespace RunCat365
                     else
                     {
                         var runner = config?.Runner ?? Runner.Cat;
-                        frames = LoadBuiltInFrames(runner);
-                        ownsFrames = false;
+                        frames = GetBuiltInPreviewFrames(runner);
+                        ownsFrames = false; // cached; disposed in Dispose(bool)
                         label = runner.GetLocalizedString();
                     }
 
@@ -599,6 +636,16 @@ namespace RunCat365
                 stillMode,
                 tintEnabled
             };
+        }
+
+        private List<Bitmap> GetBuiltInPreviewFrames(Runner runner)
+        {
+            if (!builtInPreviewFrames.TryGetValue(runner, out var frames))
+            {
+                frames = LoadBuiltInFrames(runner);
+                builtInPreviewFrames[runner] = frames;
+            }
+            return frames;
         }
 
         private static List<Bitmap> LoadBuiltInFrames(Runner runner)
@@ -682,6 +729,11 @@ namespace RunCat365
             {
                 isWebViewReady = false;
                 webView.Dispose();
+                foreach (var frames in builtInPreviewFrames.Values)
+                {
+                    foreach (var frame in frames) frame.Dispose();
+                }
+                builtInPreviewFrames.Clear();
             }
             base.Dispose(disposing);
         }

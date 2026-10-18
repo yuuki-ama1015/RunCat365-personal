@@ -118,6 +118,7 @@ namespace RunCat365
         private FPSMaxLimit fpsMaxLimit = FPSMaxLimit.FPS40;
         private int fetchCounter = 5;
         private bool isFetching;
+        private bool lastTemperatureAvailable;
 
         public RunCat365ApplicationContext()
         {
@@ -137,6 +138,7 @@ namespace RunCat365
             customRunnerRepository = new CustomRunnerRepository();
             stillSetRepository = new StillSetRepository();
             launchAtStartupManager = new LaunchAtStartupManager();
+            lastTemperatureAvailable = temperatureRepository.IsAvailable;
 
             LoadIndicatorConfigs();
 
@@ -922,6 +924,7 @@ namespace RunCat365
 
                 if (!doHeavySlice) return;
 
+                SyncTemperatureAvailability();
                 FetchSystemInfo();
             }
             catch (Exception exception)
@@ -931,6 +934,37 @@ namespace RunCat365
             finally
             {
                 isFetching = false;
+            }
+        }
+
+        /// <summary>
+        /// LHM is initialized lazily on the background fetch; reflect the outcome on the UI thread.
+        /// </summary>
+        private void SyncTemperatureAvailability()
+        {
+            var available = temperatureRepository.IsAvailable;
+            if (available == lastTemperatureAvailable) return;
+            lastTemperatureAvailable = available;
+
+            if (!indicatorConfigs.TryGetValue(SpeedSource.Temperature, out var config)) return;
+            if (!available)
+            {
+                contextMenuManager.SetIndicatorVisible(SpeedSource.Temperature, false);
+                if (!indicatorConfigs.Values.Any(c => c.Enabled && IsSpeedSourceAvailable(c.SpeedSource)))
+                {
+                    EnsureAtLeastOneEnabled();
+                    SaveIndicatorSettings();
+                    if (indicatorConfigs.TryGetValue(SpeedSource.CPU, out var cpuConfig) && cpuConfig.Enabled)
+                    {
+                        contextMenuManager.SetIndicatorVisible(SpeedSource.CPU, true);
+                        ApplyIconsForConfig(cpuConfig);
+                    }
+                }
+            }
+            else if (config.Enabled)
+            {
+                contextMenuManager.SetIndicatorVisible(SpeedSource.Temperature, true);
+                ApplyIconsForConfig(config);
             }
         }
 

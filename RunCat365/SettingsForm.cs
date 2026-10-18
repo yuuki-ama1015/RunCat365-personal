@@ -23,6 +23,7 @@ namespace RunCat365
     internal class SettingsForm : Form
     {
         private const string VirtualHostName = "runcat.settings";
+        private const string AllowedOrigin = "https://" + VirtualHostName + "/";
         private readonly Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs;
         private readonly Action<SpeedSource, bool> setIndicatorEnabled;
         private readonly Action<SpeedSource, Runner> setIndicatorRunner;
@@ -46,6 +47,13 @@ namespace RunCat365
         // Built-in runner frames for the preview, loaded once per runner and disposed with the form.
         // ResourceManager.GetObject returns a new Bitmap on every call, so reloading per tick leaks GDI memory.
         private readonly Dictionary<Runner, List<Bitmap>> builtInPreviewFrames = [];
+        // Custom runner / still set frames keyed by "custom:name" / "still:name", invalidated by repository Version.
+        private readonly Dictionary<string, List<Bitmap>> assetPreviewFrames = new(StringComparer.OrdinalIgnoreCase);
+        private int cachedCustomRunnerVersion = -1;
+        private int cachedStillSetVersion = -1;
+        // Encoded preview images keyed by asset + frame + tint, so repeated ticks skip PNG/base64 work.
+        private readonly Dictionary<string, string> previewDataUrlCache = new(StringComparer.OrdinalIgnoreCase);
+        private const int PreviewDataUrlCacheLimit = 512;
 
         internal SettingsForm(
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
@@ -131,6 +139,8 @@ namespace RunCat365
                 );
                 webView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
                 webView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                webView.CoreWebView2.NavigationStarting += OnNavigationStarting;
+                webView.CoreWebView2.NewWindowRequested += OnNewWindowRequested;
                 webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
                 webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
                 webView.CoreWebView2.Navigate($"https://{VirtualHostName}/index.html");
@@ -154,6 +164,22 @@ namespace RunCat365
             }
         }
 
+        private static bool IsAllowedUri(string? uri)
+        {
+            return uri is not null && uri.StartsWith(AllowedOrigin, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
+        {
+            // Only the bundled settings UI may load in this WebView.
+            if (!IsAllowedUri(e.Uri)) e.Cancel = true;
+        }
+
+        private void OnNewWindowRequested(object? sender, CoreWebView2NewWindowRequestedEventArgs e)
+        {
+            e.Handled = true;
+        }
+
         private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             if (IsDisposed || !IsHandleCreated || webView.IsDisposed) return;
@@ -165,6 +191,7 @@ namespace RunCat365
         private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             if (IsDisposed || !IsHandleCreated || webView.IsDisposed) return;
+            if (!IsAllowedUri(e.Source)) return;
 
             try
             {
@@ -549,23 +576,19 @@ namespace RunCat365
                 var stillName = config?.StillSetName;
                 if (!string.IsNullOrWhiteSpace(stillName))
                 {
-                    var frames = stillSetRepository.LoadFrames(stillName);
-                    try
+                    var frames = GetAssetPreviewFrames("still", stillName);
+                    if (frames.Count > 0)
                     {
-                        if (frames.Count > 0)
-                        {
-                            var index = StillSetRepository.LoadToFrameIndex(load, frames.Count);
-                            imageDataUrl = ToPngDataUrl(frames[index]);
-                            label = $"{stillName} · #{index + 1}/{frames.Count}";
-                        }
-                        else
-                        {
-                            label = "静止画セットなし";
-                        }
+                        var index = StillSetRepository.LoadToFrameIndex(load, frames.Count);
+                        imageDataUrl = GetCachedDataUrl(
+                            $"still:{stillName}:{index}",
+                            () => new Bitmap(frames[index])
+                        );
+                        label = $"{stillName} · #{index + 1}/{frames.Count}";
                     }
-                    finally
+                    else
                     {
-                        foreach (var frame in frames) frame.Dispose();
+                        label = "静止画セットなし";
                     }
                 }
                 else
@@ -575,53 +598,43 @@ namespace RunCat365
             }
             else
             {
-                List<Bitmap>? frames = null;
-                var ownsFrames = false;
-                try
+                List<Bitmap> frames;
+                string cacheKey;
+                var customName = config?.CustomRunnerName;
+                if (!string.IsNullOrEmpty(customName))
                 {
-                    var customName = config?.CustomRunnerName;
-                    if (!string.IsNullOrEmpty(customName))
-                    {
-                        frames = customRunnerRepository.LoadFrames(customName);
-                        ownsFrames = true;
-                        label = customName;
-                    }
-                    else
-                    {
-                        var runner = config?.Runner ?? Runner.Cat;
-                        frames = GetBuiltInPreviewFrames(runner);
-                        ownsFrames = false; // cached; disposed in Dispose(bool)
-                        label = runner.GetLocalizedString();
-                    }
-
-                    if (frames is null || frames.Count == 0)
-                    {
-                        label = "素材なし";
-                    }
-                    else
-                    {
-                        var frameIndex = tick % frames.Count;
-                        using var rendered = RenderPreviewFrame(
-                            frames[frameIndex],
-                            tintEnabled,
-                            load,
-                            tintStrength
-                        );
-                        imageDataUrl = ToPngDataUrl(rendered);
-                        label = tintEnabled
-                            ? $"{label} · tint {BitmapExtension.LoadToTintStep(load) + 1}/16"
-                            : label;
-                        intervalMs = PreviewIntervalMs(
-                            runnerSpeedEnabled ? load : 0f
-                        );
-                    }
+                    frames = GetAssetPreviewFrames("custom", customName);
+                    cacheKey = $"custom:{customName}";
+                    label = customName;
                 }
-                finally
+                else
                 {
-                    if (ownsFrames && frames is not null)
-                    {
-                        foreach (var frame in frames) frame.Dispose();
-                    }
+                    var runner = config?.Runner ?? Runner.Cat;
+                    frames = GetBuiltInPreviewFrames(runner); // cached; disposed in Dispose(bool)
+                    cacheKey = $"builtin:{runner}";
+                    label = runner.GetLocalizedString();
+                }
+
+                if (frames.Count == 0)
+                {
+                    label = "素材なし";
+                }
+                else
+                {
+                    var frameIndex = tick % frames.Count;
+                    var tintKey = tintEnabled
+                        ? $"{BitmapExtension.LoadToTintStep(load)}:{tintStrength}"
+                        : "none";
+                    imageDataUrl = GetCachedDataUrl(
+                        $"{cacheKey}:{frameIndex}:{tintKey}",
+                        () => RenderPreviewFrame(frames[frameIndex], tintEnabled, load, tintStrength)
+                    );
+                    label = tintEnabled
+                        ? $"{label} · tint {BitmapExtension.LoadToTintStep(load) + 1}/16"
+                        : label;
+                    intervalMs = PreviewIntervalMs(
+                        runnerSpeedEnabled ? load : 0f
+                    );
                 }
             }
 
@@ -636,6 +649,54 @@ namespace RunCat365
                 stillMode,
                 tintEnabled
             };
+        }
+
+        private void InvalidateAssetPreviewCachesIfChanged()
+        {
+            if (cachedCustomRunnerVersion == customRunnerRepository.Version
+                && cachedStillSetVersion == stillSetRepository.Version)
+            {
+                return;
+            }
+            cachedCustomRunnerVersion = customRunnerRepository.Version;
+            cachedStillSetVersion = stillSetRepository.Version;
+            ClearAssetPreviewCaches();
+        }
+
+        private void ClearAssetPreviewCaches()
+        {
+            foreach (var frames in assetPreviewFrames.Values)
+            {
+                foreach (var frame in frames) frame.Dispose();
+            }
+            assetPreviewFrames.Clear();
+            previewDataUrlCache.Clear();
+        }
+
+        private List<Bitmap> GetAssetPreviewFrames(string kind, string name)
+        {
+            InvalidateAssetPreviewCachesIfChanged();
+            var key = $"{kind}:{name}";
+            if (!assetPreviewFrames.TryGetValue(key, out var frames))
+            {
+                frames = kind == "still"
+                    ? stillSetRepository.LoadFrames(name)
+                    : customRunnerRepository.LoadFrames(name);
+                assetPreviewFrames[key] = frames;
+            }
+            return frames;
+        }
+
+        private string? GetCachedDataUrl(string key, Func<Bitmap> render)
+        {
+            InvalidateAssetPreviewCachesIfChanged();
+            if (previewDataUrlCache.TryGetValue(key, out var cached)) return cached;
+            using var bitmap = render();
+            var dataUrl = ToPngDataUrl(bitmap);
+            if (dataUrl is null) return null;
+            if (previewDataUrlCache.Count >= PreviewDataUrlCacheLimit) previewDataUrlCache.Clear();
+            previewDataUrlCache[key] = dataUrl;
+            return dataUrl;
         }
 
         private List<Bitmap> GetBuiltInPreviewFrames(Runner runner)
@@ -734,6 +795,7 @@ namespace RunCat365
                     foreach (var frame in frames) frame.Dispose();
                 }
                 builtInPreviewFrames.Clear();
+                ClearAssetPreviewCaches();
             }
             base.Dispose(disposing);
         }

@@ -48,10 +48,18 @@ namespace RunCat365
         private long lastReceived;
         private DateTime lastUpdate;
         private NetworkInfo? networkInfo;
+        private int ticksSinceReselect;
+        // Update() runs every 5th fetch (~5s), so this retries roughly every 30s.
+        private const int RESELECT_INTERVAL_TICKS = 6;
 
         internal bool IsAvailable => networkInterface is not null;
 
         internal NetworkRepository()
+        {
+            TrySelectInterface();
+        }
+
+        private void TrySelectInterface()
         {
             try
             {
@@ -68,6 +76,18 @@ namespace RunCat365
                 // VPN / virtual NIC / disposed handle and any other NIC failure
                 // must not take down the process before the tray exists.
                 networkInterface = null;
+            }
+        }
+
+        private static bool IsUp(NetworkInterface networkInterface)
+        {
+            try
+            {
+                return networkInterface.OperationalStatus == OperationalStatus.Up;
+            }
+            catch (Exception)
+            {
+                return false;
             }
         }
 
@@ -101,7 +121,17 @@ namespace RunCat365
 
         internal void Update()
         {
-            if (networkInterface is null) return;
+            if (networkInterface is null || !IsUp(networkInterface))
+            {
+                // Wi-Fi switch / sleep resume / adapter change: periodically pick a new interface.
+                ticksSinceReselect += 1;
+                if (ticksSinceReselect < RESELECT_INTERVAL_TICKS) return;
+                ticksSinceReselect = 0;
+                networkInfo = null;
+                TrySelectInterface();
+                return;
+            }
+            ticksSinceReselect = 0;
             try
             {
                 var stats = networkInterface.GetIPStatistics();

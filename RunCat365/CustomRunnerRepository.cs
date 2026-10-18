@@ -29,6 +29,9 @@ namespace RunCat365
         private const string PROFILES_FILE_NAME = "profiles.json";
 
         private readonly string basePath;
+
+        /// <summary>Incremented on every Save/Delete so callers can invalidate caches.</summary>
+        internal int Version { get; private set; }
         private List<CustomRunnerProfile> profiles = [];
 
         internal CustomRunnerRepository()
@@ -120,6 +123,7 @@ namespace RunCat365
             }
 
             profiles.Add(profile);
+            Version++;
             return TrySaveProfiles();
         }
 
@@ -143,6 +147,7 @@ namespace RunCat365
             }
 
             profiles.Remove(profile);
+            Version++;
             TrySaveProfiles();
             return true;
         }

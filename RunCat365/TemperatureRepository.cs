@@ -117,13 +117,21 @@ namespace RunCat365
         private const int REFRESH_INTERVAL_TICKS = 30;
 
         private readonly TemperaturePerformanceCounters? counters;
+        // computer / lhmInitAttempted are only touched from Update() (background fetch) and Close().
         private Computer? computer;
-        private bool lhmAvailable;
+        private volatile bool lhmAvailable;
+        private volatile bool lhmInitPending;
         private bool lhmInitAttempted;
+        // TemperatureInfo is a multi-field struct; guard it so UI-thread reads never see a torn value.
+        private readonly object stateLock = new();
         private TemperatureInfo? temperatureInfo;
         private int ticksSinceLastRefresh;
 
-        internal bool IsAvailable => counters is not null || lhmAvailable;
+        /// <summary>
+        /// True while LHM initialization is still pending (optimistic) so the indicator is not
+        /// dropped before the background fetch has had a chance to open sensors.
+        /// </summary>
+        internal bool IsAvailable => counters is not null || lhmAvailable || lhmInitPending;
 
         internal static bool IsPawnIoReady => PawnIo.IsInstalled && PawnIo.Version >= new Version(2, 0, 0, 0);
 
@@ -141,8 +149,9 @@ namespace RunCat365
             counters = TemperaturePerformanceCounters.TryCreate();
             if (counters is null)
             {
-                StartupLog.Append("Temperature: Thermal Zone Information counters unavailable; trying LHM.");
-                TryInitializeLhm();
+                // LHM Open() and its retry sleeps are slow; defer to the first background Update().
+                StartupLog.Append("Temperature: Thermal Zone Information counters unavailable; LHM init deferred to background fetch.");
+                lhmInitPending = true;
             }
             else
             {
@@ -166,22 +175,42 @@ namespace RunCat365
 
             if (fromCounters is not null)
             {
-                temperatureInfo = fromCounters;
+                SetInfo(fromCounters);
                 return;
             }
 
             if (!lhmAvailable && !lhmInitAttempted)
             {
-                StartupLog.Append("Temperature: counters yielded no valid reading; trying LHM.");
-                TryInitializeLhm();
+                StartupLog.Append(lhmInitPending
+                    ? "Temperature: initializing LHM on background fetch."
+                    : "Temperature: counters yielded no valid reading; trying LHM.");
+                try
+                {
+                    TryInitializeLhm();
+                }
+                finally
+                {
+                    lhmInitPending = false;
+                }
             }
 
-            temperatureInfo = lhmAvailable ? ReadFromLhm() : null;
+            SetInfo(lhmAvailable ? ReadFromLhm() : null);
         }
 
         internal TemperatureInfo? Get()
         {
-            return temperatureInfo;
+            lock (stateLock)
+            {
+                return temperatureInfo;
+            }
+        }
+
+        private void SetInfo(TemperatureInfo? info)
+        {
+            lock (stateLock)
+            {
+                temperatureInfo = info;
+            }
         }
 
         internal void Close()
@@ -200,6 +229,7 @@ namespace RunCat365
                 computer = null;
             }
             lhmAvailable = false;
+            lhmInitPending = false;
         }
 
         private TemperatureInfo? ReadFromCounters()
@@ -270,7 +300,7 @@ namespace RunCat365
                     return false;
                 }
 
-                temperatureInfo = sample;
+                SetInfo(sample);
                 lhmAvailable = true;
                 StartupLog.Append(
                     $"Temperature: LHM available (labeled CPU). max={sample.Value.MaximumCelsius:F1}C avg={sample.Value.AverageCelsius:F1}C");

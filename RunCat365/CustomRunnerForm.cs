@@ -613,7 +613,7 @@ namespace RunCat365
             {
                 Debug.WriteLine($"Failed to load GIF '{file}': {ex.Message}");
                 MessageBox.Show(
-                    "GIFの読み込みに失敗しました。",
+                    Strings.Gif_LoadFailed,
                     Strings.Message_Warning,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
@@ -626,7 +626,7 @@ namespace RunCat365
                 var count = extracted.Count;
                 GifFrameExtractor.DisposeAll(extracted);
                 MessageBox.Show(
-                    $"GIFのフレーム数が不足しています。最低 {minFrameCount} 枚必要です。（現在 {count} 枚）",
+                    string.Format(Strings.Gif_NotEnoughFramesFormat, minFrameCount, count),
                     Strings.Message_Warning,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning
@@ -881,6 +881,15 @@ namespace RunCat365
                     }
                 }
                 ValidateFormState();
+            }
+            else
+            {
+                MessageBox.Show(
+                    Strings.Asset_SaveFailed,
+                    Strings.Message_Warning,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
             }
         }
 

@@ -107,28 +107,60 @@ namespace RunCat365
 
             var runnerDirectory = GetAssetDirectory(name);
             if (runnerDirectory is null) return false;
-            Directory.CreateDirectory(runnerDirectory);
+
+            // Write into a temp directory first and swap it in, so a failure midway
+            // (disk full, GDI+ error) never leaves the existing asset half-deleted.
+            var tempDirectory = runnerDirectory + ".tmp-" + Guid.NewGuid().ToString("N");
+            var backupDirectory = runnerDirectory + ".old-" + Guid.NewGuid().ToString("N");
+            var profile = new CustomRunnerProfile { Name = name };
+            try
+            {
+                Directory.CreateDirectory(tempDirectory);
+                for (int i = 0; i < frames.Count; i++)
+                {
+                    using var resized = ResizeFrame(frames[i]);
+                    var fileName = $"frame_{i}.png";
+                    resized.Save(Path.Combine(tempDirectory, fileName), ImageFormat.Png);
+                    profile.FrameFileNames.Add(fileName);
+                }
+
+                var hadExisting = Directory.Exists(runnerDirectory);
+                if (hadExisting) Directory.Move(runnerDirectory, backupDirectory);
+                try
+                {
+                    Directory.Move(tempDirectory, runnerDirectory);
+                }
+                catch
+                {
+                    if (hadExisting && !Directory.Exists(runnerDirectory)) Directory.Move(backupDirectory, runnerDirectory);
+                    throw;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Runtime.InteropServices.ExternalException or ArgumentException)
+            {
+                StartupLog.Append($"Failed to save custom runner '{name}': {ex.GetType().Name}: {ex.Message}");
+                TryDeleteDirectory(tempDirectory);
+                return false;
+            }
+            TryDeleteDirectory(backupDirectory);
 
             var existingProfile = GetByName(name);
-            if (existingProfile is not null)
-            {
-                DeleteFrameFiles(existingProfile);
-                profiles.Remove(existingProfile);
-            }
-
-            var profile = new CustomRunnerProfile { Name = name };
-            for (int i = 0; i < frames.Count; i++)
-            {
-                using var resized = ResizeFrame(frames[i]);
-                var fileName = $"frame_{i}.png";
-                var filePath = Path.Combine(runnerDirectory, fileName);
-                resized.Save(filePath, ImageFormat.Png);
-                profile.FrameFileNames.Add(fileName);
-            }
-
+            if (existingProfile is not null) profiles.Remove(existingProfile);
             profiles.Add(profile);
             Version++;
             return TrySaveProfiles();
+        }
+
+        private static void TryDeleteDirectory(string path)
+        {
+            try
+            {
+                if (Directory.Exists(path)) Directory.Delete(path, true);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Debug.WriteLine($"Failed to delete '{path}': {ex.Message}");
+            }
         }
 
         internal bool Delete(string name)
@@ -188,7 +220,10 @@ namespace RunCat365
             {
                 var options = new JsonSerializerOptions { WriteIndented = true };
                 var json = JsonSerializer.Serialize(profiles, options);
-                File.WriteAllText(profilesPath, json);
+                // Write to a temp file and replace, so a crash mid-write never corrupts profiles.json.
+                var tempPath = profilesPath + ".tmp";
+                File.WriteAllText(tempPath, json);
+                File.Move(tempPath, profilesPath, overwrite: true);
                 return true;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)

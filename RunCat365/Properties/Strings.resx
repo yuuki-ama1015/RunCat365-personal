@@ -339,4 +339,94 @@
   <data name="AssetName_Reserved" xml:space="preserve">
     <value>This name is reserved by Windows (CON, PRN, AUX, NUL, COM1–9, LPT1–9).</value>
   </data>
+  <data name="Asset_SaveFailed" xml:space="preserve">
+    <value>Failed to save.</value>
+  </data>
+  <data name="Message_Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="Message_AlreadyRunning" xml:space="preserve">
+    <value>RunCat 365 is already running.</value>
+  </data>
+  <data name="Message_StartupFailed" xml:space="preserve">
+    <value>RunCat 365 failed to start.
+
+See startup.log for details.</value>
+  </data>
+  <data name="Message_StartupErrorTitle" xml:space="preserve">
+    <value>RunCat 365 - Startup Error</value>
+  </data>
+  <data name="Message_SettingsUIInitFailed" xml:space="preserve">
+    <value>Failed to initialize settings UI.
+{0}</value>
+  </data>
+  <data name="Gif_LoadFailed" xml:space="preserve">
+    <value>Failed to load the GIF.</value>
+  </data>
+  <data name="Gif_NotEnoughFramesFormat" xml:space="preserve">
+    <value>The GIF does not have enough frames. At least {0} are required. (currently {1})</value>
+  </data>
+  <data name="Preview_Default" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="Preview_NoStillSet" xml:space="preserve">
+    <value>No still set</value>
+  </data>
+  <data name="Preview_SelectStillSet" xml:space="preserve">
+    <value>Select a still set</value>
+  </data>
+  <data name="Preview_NoAsset" xml:space="preserve">
+    <value>No frames</value>
+  </data>
+  <data name="StillSet_WindowTitle" xml:space="preserve">
+    <value>For still mode — Edit</value>
+  </data>
+  <data name="StillSet_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="StillSet_FramesLabel" xml:space="preserve">
+    <value>Frames (low load → high load)</value>
+  </data>
+  <data name="StillSet_Add" xml:space="preserve">
+    <value>Add…</value>
+  </data>
+  <data name="StillSet_Remove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
+  <data name="StillSet_MoveUp" xml:space="preserve">
+    <value>Up</value>
+  </data>
+  <data name="StillSet_MoveDown" xml:space="preserve">
+    <value>Down</value>
+  </data>
+  <data name="StillSet_RequirementsFormat" xml:space="preserve">
+    <value>{0}–{1} PNG / GIF frames (transparent PNG recommended). Resized automatically for the tray.</value>
+  </data>
+  <data name="StillSet_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="StillSet_Delete" xml:space="preserve">
+    <value>Delete…</value>
+  </data>
+  <data name="StillSet_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="StillSet_SelectFramesTitle" xml:space="preserve">
+    <value>Select frames for still mode</value>
+  </data>
+  <data name="StillSet_HintOkFormat" xml:space="preserve">
+    <value>{0}–{1} transparent PNGs. Resized automatically for the tray. ({2} frames)</value>
+  </data>
+  <data name="StillSet_HintNeedFormat" xml:space="preserve">
+    <value>{0}–{1} transparent PNGs are required. (currently {2})</value>
+  </data>
+  <data name="StillSet_FrameCountFormat" xml:space="preserve">
+    <value>Use {0}–{1} frames.</value>
+  </data>
+  <data name="StillSet_ConfirmOverwriteFormat" xml:space="preserve">
+    <value>"{0}" already exists. Overwrite?</value>
+  </data>
+  <data name="StillSet_ConfirmDeleteFormat" xml:space="preserve">
+    <value>Delete "{0}"?</value>
+  </data>
 </root>

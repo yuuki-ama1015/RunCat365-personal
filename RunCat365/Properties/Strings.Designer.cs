@@ -625,5 +625,178 @@ namespace RunCat365.Properties {
                 return ResourceManager.GetString("AssetName_Reserved", resourceCulture);
             }
         }
+            internal static string Asset_SaveFailed {
+            get {
+                return ResourceManager.GetString("Asset_SaveFailed", resourceCulture);
+            }
+        }
+
+        internal static string Message_Confirm {
+            get {
+                return ResourceManager.GetString("Message_Confirm", resourceCulture);
+            }
+        }
+
+        internal static string Message_AlreadyRunning {
+            get {
+                return ResourceManager.GetString("Message_AlreadyRunning", resourceCulture);
+            }
+        }
+
+        internal static string Message_StartupFailed {
+            get {
+                return ResourceManager.GetString("Message_StartupFailed", resourceCulture);
+            }
+        }
+
+        internal static string Message_StartupErrorTitle {
+            get {
+                return ResourceManager.GetString("Message_StartupErrorTitle", resourceCulture);
+            }
+        }
+
+        internal static string Message_SettingsUIInitFailed {
+            get {
+                return ResourceManager.GetString("Message_SettingsUIInitFailed", resourceCulture);
+            }
+        }
+
+        internal static string Gif_LoadFailed {
+            get {
+                return ResourceManager.GetString("Gif_LoadFailed", resourceCulture);
+            }
+        }
+
+        internal static string Gif_NotEnoughFramesFormat {
+            get {
+                return ResourceManager.GetString("Gif_NotEnoughFramesFormat", resourceCulture);
+            }
+        }
+
+        internal static string Preview_Default {
+            get {
+                return ResourceManager.GetString("Preview_Default", resourceCulture);
+            }
+        }
+
+        internal static string Preview_NoStillSet {
+            get {
+                return ResourceManager.GetString("Preview_NoStillSet", resourceCulture);
+            }
+        }
+
+        internal static string Preview_SelectStillSet {
+            get {
+                return ResourceManager.GetString("Preview_SelectStillSet", resourceCulture);
+            }
+        }
+
+        internal static string Preview_NoAsset {
+            get {
+                return ResourceManager.GetString("Preview_NoAsset", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_WindowTitle {
+            get {
+                return ResourceManager.GetString("StillSet_WindowTitle", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_Name {
+            get {
+                return ResourceManager.GetString("StillSet_Name", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_FramesLabel {
+            get {
+                return ResourceManager.GetString("StillSet_FramesLabel", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_Add {
+            get {
+                return ResourceManager.GetString("StillSet_Add", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_Remove {
+            get {
+                return ResourceManager.GetString("StillSet_Remove", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_MoveUp {
+            get {
+                return ResourceManager.GetString("StillSet_MoveUp", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_MoveDown {
+            get {
+                return ResourceManager.GetString("StillSet_MoveDown", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_RequirementsFormat {
+            get {
+                return ResourceManager.GetString("StillSet_RequirementsFormat", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_Save {
+            get {
+                return ResourceManager.GetString("StillSet_Save", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_Delete {
+            get {
+                return ResourceManager.GetString("StillSet_Delete", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_Close {
+            get {
+                return ResourceManager.GetString("StillSet_Close", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_SelectFramesTitle {
+            get {
+                return ResourceManager.GetString("StillSet_SelectFramesTitle", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_HintOkFormat {
+            get {
+                return ResourceManager.GetString("StillSet_HintOkFormat", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_HintNeedFormat {
+            get {
+                return ResourceManager.GetString("StillSet_HintNeedFormat", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_FrameCountFormat {
+            get {
+                return ResourceManager.GetString("StillSet_FrameCountFormat", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_ConfirmOverwriteFormat {
+            get {
+                return ResourceManager.GetString("StillSet_ConfirmOverwriteFormat", resourceCulture);
+            }
+        }
+
+        internal static string StillSet_ConfirmDeleteFormat {
+            get {
+                return ResourceManager.GetString("StillSet_ConfirmDeleteFormat", resourceCulture);
+            }
+        }
     }
 }

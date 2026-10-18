@@ -46,7 +46,7 @@ namespace RunCat365
                 if (!createdNew)
                 {
                     MessageBox.Show(
-                        "RunCat 365 はすでに起動しています。",
+                        Strings.Message_AlreadyRunning,
                         "RunCat 365",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
@@ -72,8 +72,8 @@ namespace RunCat365
                 }
 
                 MessageBox.Show(
-                    "RunCat 365 の起動に失敗しました。\n\n詳細は startup.log を確認してください。",
-                    "RunCat 365 - Startup Error",
+                    Strings.Message_StartupFailed,
+                    Strings.Message_StartupErrorTitle,
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
@@ -119,6 +119,9 @@ namespace RunCat365
         private int fetchCounter = 5;
         private bool isFetching;
         private bool lastTemperatureAvailable;
+        // Still sets that failed to load, with the time we may try again (avoids re-reading disk every fetch).
+        private readonly Dictionary<string, DateTime> stillSetRetryAfter = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly TimeSpan StillSetRetryBackoff = TimeSpan.FromMinutes(1);
 
         public RunCat365ApplicationContext()
         {
@@ -621,15 +624,27 @@ namespace RunCat365
         {
             if (!indicatorConfigs.TryGetValue(source, out var config)) return;
             var frames = stillSetRepository.LoadFrames(name);
-            if (frames.Count == 0) return;
+            if (frames.Count == 0)
+            {
+                stillSetRetryAfter[name] = DateTime.UtcNow + StillSetRetryBackoff;
+                StartupLog.Append($"Still set '{name}' has no loadable frames; retrying after {StillSetRetryBackoff.TotalSeconds:F0}s.");
+                return;
+            }
+            stillSetRetryAfter.Remove(name);
             config.StillSetName = name;
             contextMenuManager.ApplyStillIcons(source, frames, GetSystemTheme(), manualTheme);
             contextMenuManager.SetIndicatorStillCrossfadeEnabled(source, config.StillCrossfadeEnabled);
             foreach (var frame in frames) frame.Dispose();
         }
 
+        private bool IsStillSetRetryBlocked(string name)
+        {
+            return stillSetRetryAfter.TryGetValue(name, out var retryAfter) && DateTime.UtcNow < retryAfter;
+        }
+
         private void HandleStillSetDeleted(string deletedName)
         {
+            stillSetRetryAfter.Remove(deletedName);
             foreach (var config in indicatorConfigs.Values)
             {
                 if (!string.Equals(config.StillSetName, deletedName, StringComparison.OrdinalIgnoreCase))
@@ -822,7 +837,9 @@ namespace RunCat365
                 {
                     contextMenuManager.SetIndicatorLoadTint(config.SpeedSource, null);
                     var frameCount = contextMenuManager.GetStillFrameCount(config.SpeedSource);
-                    if (frameCount <= 0 && !string.IsNullOrEmpty(config.StillSetName))
+                    if (frameCount <= 0
+                        && !string.IsNullOrEmpty(config.StillSetName)
+                        && !IsStillSetRetryBlocked(config.StillSetName))
                     {
                         ApplyStillSet(config.SpeedSource, config.StillSetName);
                         frameCount = contextMenuManager.GetStillFrameCount(config.SpeedSource);

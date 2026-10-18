@@ -590,5 +590,40 @@ namespace RunCat365.Properties {
                 return ResourceManager.GetString("Window_Settings", resourceCulture);
             }
         }
+            internal static string AssetName_Empty {
+            get {
+                return ResourceManager.GetString("AssetName_Empty", resourceCulture);
+            }
+        }
+
+        internal static string AssetName_LeadingTrailingSpace {
+            get {
+                return ResourceManager.GetString("AssetName_LeadingTrailingSpace", resourceCulture);
+            }
+        }
+
+        internal static string AssetName_TrailingDot {
+            get {
+                return ResourceManager.GetString("AssetName_TrailingDot", resourceCulture);
+            }
+        }
+
+        internal static string AssetName_DotsOnly {
+            get {
+                return ResourceManager.GetString("AssetName_DotsOnly", resourceCulture);
+            }
+        }
+
+        internal static string AssetName_InvalidChars {
+            get {
+                return ResourceManager.GetString("AssetName_InvalidChars", resourceCulture);
+            }
+        }
+
+        internal static string AssetName_Reserved {
+            get {
+                return ResourceManager.GetString("AssetName_Reserved", resourceCulture);
+            }
+        }
     }
 }

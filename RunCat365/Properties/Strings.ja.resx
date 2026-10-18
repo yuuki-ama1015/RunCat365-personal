@@ -321,4 +321,22 @@
   <data name="Window_Settings" xml:space="preserve">
     <value>設定</value>
   </data>
+  <data name="AssetName_Empty" xml:space="preserve">
+    <value>名前を入力してください。</value>
+  </data>
+  <data name="AssetName_LeadingTrailingSpace" xml:space="preserve">
+    <value>名前の先頭・末尾に空白は使えません。</value>
+  </data>
+  <data name="AssetName_TrailingDot" xml:space="preserve">
+    <value>名前の末尾に「.」は使えません。</value>
+  </data>
+  <data name="AssetName_DotsOnly" xml:space="preserve">
+    <value>「.」だけの名前は使えません。</value>
+  </data>
+  <data name="AssetName_InvalidChars" xml:space="preserve">
+    <value>ファイル名に使えない文字（\ / : * ? " &lt; &gt; |）が含まれています。</value>
+  </data>
+  <data name="AssetName_Reserved" xml:space="preserve">
+    <value>Windows の予約名（CON, PRN, AUX, NUL, COM1〜9, LPT1〜9）は使えません。</value>
+  </data>
 </root>

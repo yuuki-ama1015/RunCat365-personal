@@ -376,9 +376,10 @@ namespace RunCat365
         private void SaveSet()
         {
             var name = nameTextBox.Text.Trim();
-            if (string.IsNullOrWhiteSpace(name))
+            var nameError = AssetNameValidator.Validate(name);
+            if (nameError is not null)
             {
-                MessageBox.Show(this, "名前を入力してください。", "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, nameError, "警告", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             if (pendingFrames.Count < StillSetRepository.MIN_FRAME_COUNT

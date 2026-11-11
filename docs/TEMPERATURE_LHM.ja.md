@@ -1,6 +1,6 @@
 # 温度取得と LibreHardwareMonitor（LHM）
 
-最終更新: 2026-09-24
+最終更新: 2026-11-11
 
 ## 原因と対応
 
@@ -38,6 +38,9 @@ TemperatureRepository で **51 / 50 / 49 / 47 / 49 ℃** を 5 回連続取得�
 2. 有効な値が取れないとき LHM の CPU、Motherboard / SuperIO へフォールバック（既存の出典表示: **CPU**）。
 3. 設定画面で PawnIO 不足・管理者実行の必要性・それ以外の未取得を区別して案内する。
 4. `Distance to TjMax` は実温度ではなく上限温度までの差なので集計しない。NaN / Infinity も除外する。
+5. 温度は「アイドル温度以下 = 負荷 0%／最大温度以上 = 負荷 100%」に換算して、速度・色の変化・静止画の切替に使う。
+   範囲は設定画面の Temperature ページ「温度の範囲」で変更できる（既定 40〜95℃、指定可能 0〜120℃、差は 5℃ 以上）。
+   変更は次回の取得（数秒以内）から反映される。
 
 ## 検証
 
@@ -56,7 +59,8 @@ dotnet run --project tests/TemperatureChecks -c Release -p:Platform=x64 -- --pro
 `--probe` は温度未取得なら終了コード 1 を返す。通常の回帰テストは実センサーを必要としない。
 Release ワークフローでも回帰テストを実行する。
 
-設定画面の案内は `node tests/TemperatureChecks/settings-ui.cjs` で 4 分岐を確認する。
+設定画面の案内 4 分岐と、温度の範囲の入力補正は `node tests/TemperatureChecks/settings-ui.cjs` で確認する。
+温度→負荷の換算と範囲の正規化は上記 `tests/TemperatureChecks` の回帰テストに含まれる。
 
 ## 公式実装の根拠
 

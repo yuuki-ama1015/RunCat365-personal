@@ -99,8 +99,6 @@ namespace RunCat365
     {
         private const int FETCH_TIMER_DEFAULT_INTERVAL = 1000;
         private const int FETCH_COUNTER_SIZE = 5;
-        private const float TemperatureIdleCelsius = 40.0f;
-        private const float TemperatureFullCelsius = 95.0f;
         private readonly CPURepository cpuRepository;
         private readonly GPURepository gpuRepository;
         private readonly MemoryRepository memoryRepository;
@@ -115,6 +113,7 @@ namespace RunCat365
         private readonly Dictionary<SpeedSource, IndicatorConfig> indicatorConfigs = [];
         private Theme manualTheme = Theme.System;
         private TemperatureUnit temperatureUnit = TemperatureUnit.System;
+        private TemperatureRange temperatureRange = TemperatureRange.Default;
         private FPSMaxLimit fpsMaxLimit = FPSMaxLimit.FPS40;
         private int fetchCounter = 5;
         private bool isFetching;
@@ -129,6 +128,10 @@ namespace RunCat365
             _ = Enum.TryParse(UserSettings.Default.Theme, out manualTheme);
             _ = Enum.TryParse(UserSettings.Default.TemperatureUnit, out temperatureUnit);
             _ = Enum.TryParse(UserSettings.Default.FPSMaxLimit, out fpsMaxLimit);
+            temperatureRange = TemperatureRange.Create(
+                UserSettings.Default.TemperatureIdleCelsius,
+                UserSettings.Default.TemperatureFullCelsius
+            );
 
             SystemEvents.UserPreferenceChanged += new UserPreferenceChangedEventHandler(UserPreferenceChanged);
 
@@ -170,6 +173,8 @@ namespace RunCat365
                 f => ChangeFPSMaxLimit(f),
                 () => temperatureUnit,
                 u => ChangeTemperatureUnit(u),
+                () => temperatureRange,
+                (idleCelsius, fullCelsius) => ChangeTemperatureRange(idleCelsius, fullCelsius),
                 () => launchAtStartupManager.GetStartup(),
                 s => launchAtStartupManager.ToggleStartup(s),
                 () => OpenProjectPage(),
@@ -746,6 +751,14 @@ namespace RunCat365
             UserSettings.Default.Save();
         }
 
+        private void ChangeTemperatureRange(int idleCelsius, int fullCelsius)
+        {
+            temperatureRange = TemperatureRange.Create(idleCelsius, fullCelsius);
+            UserSettings.Default.TemperatureIdleCelsius = temperatureRange.IdleCelsius;
+            UserSettings.Default.TemperatureFullCelsius = temperatureRange.FullCelsius;
+            UserSettings.Default.Save();
+        }
+
         private void ChangeFPSMaxLimit(FPSMaxLimit f)
         {
             fpsMaxLimit = f;
@@ -780,7 +793,7 @@ namespace RunCat365
                 : $"{baseDescription}\n{temperatureDescription}";
         }
 
-        private static float GetLoad(
+        private float GetLoad(
             SpeedSource speedSource,
             CPUInfo cpuInfo,
             GPUInfo? gpuInfo,
@@ -794,23 +807,15 @@ namespace RunCat365
                 SpeedSource.GPU => gpuInfo?.Maximum ?? 0f,
                 SpeedSource.Memory => memoryInfo.MemoryLoad,
                 SpeedSource.Temperature => temperatureInfo.HasValue
-                    ? TemperatureToLoad(temperatureInfo.Value.MaximumCelsius)
+                    ? temperatureRange.ToLoad(temperatureInfo.Value.MaximumCelsius)
                     : 0f,
                 _ => 0f,
             };
         }
 
-        private static float TemperatureToLoad(float maximumCelsius)
-        {
-            var load = (maximumCelsius - TemperatureIdleCelsius)
-                / (TemperatureFullCelsius - TemperatureIdleCelsius)
-                * 100.0f;
-            return Math.Clamp(load, 0.0f, 100.0f);
-        }
-
 #if DEBUG
         /// <summary>
-        /// Tiny runnable check for TemperatureToLoad clamp/scale.
+        /// Tiny runnable check for the default TemperatureRange clamp/scale.
         /// Runs automatically on DEBUG startup (Debug.Assert).
         /// Manual: build Debug and launch, or call VerifyTemperatureToLoadMapping() from a Debug session.
         /// </summary>
@@ -818,10 +823,10 @@ namespace RunCat365
         {
             static void Expect(float celsius, float expected)
             {
-                var actual = TemperatureToLoad(celsius);
+                var actual = TemperatureRange.Default.ToLoad(celsius);
                 Debug.Assert(
                     Math.Abs(actual - expected) < 0.01f,
-                    $"TemperatureToLoad({celsius}) expected {expected}, got {actual}"
+                    $"TemperatureRange.Default.ToLoad({celsius}) expected {expected}, got {actual}"
                 );
             }
 

@@ -564,5 +564,29 @@ namespace RunCat365.Properties {
                 this["IndicatorsMigrated"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("40")]
+        public int TemperatureIdleCelsius {
+            get {
+                return ((int)(this["TemperatureIdleCelsius"]));
+            }
+            set {
+                this["TemperatureIdleCelsius"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("95")]
+        public int TemperatureFullCelsius {
+            get {
+                return ((int)(this["TemperatureFullCelsius"]));
+            }
+            set {
+                this["TemperatureFullCelsius"] = value;
+            }
+        }
     }
 }

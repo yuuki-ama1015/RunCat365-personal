@@ -35,6 +35,8 @@ namespace RunCat365
         private readonly Action<SpeedSource, bool> setStillCrossfadeEnabled;
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
+        private readonly Func<TemperatureRange> getTemperatureRange;
+        private readonly Action<int, int> setTemperatureRange;
         private readonly CustomRunnerRepository customRunnerRepository;
         private readonly StillSetRepository stillSetRepository;
         private readonly Action<string?> openCustomRunnerEditor;
@@ -67,6 +69,8 @@ namespace RunCat365
             Action<SpeedSource, bool> setStillCrossfadeEnabled,
             Action<SpeedSource, string> applyCustomRunner,
             Func<SpeedSource, bool> isSpeedSourceAvailable,
+            Func<TemperatureRange> getTemperatureRange,
+            Action<int, int> setTemperatureRange,
             CustomRunnerRepository customRunnerRepository,
             StillSetRepository stillSetRepository,
             Action<string?> openCustomRunnerEditor,
@@ -86,6 +90,8 @@ namespace RunCat365
             this.setStillCrossfadeEnabled = setStillCrossfadeEnabled;
             this.applyCustomRunner = applyCustomRunner;
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
+            this.getTemperatureRange = getTemperatureRange;
+            this.setTemperatureRange = setTemperatureRange;
             this.customRunnerRepository = customRunnerRepository;
             this.stillSetRepository = stillSetRepository;
             this.openCustomRunnerEditor = openCustomRunnerEditor;
@@ -296,6 +302,16 @@ namespace RunCat365
                     return;
                 }
 
+                if (type == "setTemperatureRange")
+                {
+                    if (!TryGetInt32(root, "idleCelsius", out var idleCelsius)) return;
+                    if (!TryGetInt32(root, "fullCelsius", out var fullCelsius)) return;
+
+                    setTemperatureRange(idleCelsius, fullCelsius);
+                    PostIndicatorsState();
+                    return;
+                }
+
                 if (type == "setCustomRunner")
                 {
                     if (!TryGetString(root, "id", out var indicatorId)) return;
@@ -502,12 +518,25 @@ namespace RunCat365
                     .Select(p => new { name = p.Name, frameCount = p.FrameFileNames.Count })
                     .ToArray();
 
+                var currentTemperatureRange = getTemperatureRange();
+                var temperatureRange = new
+                {
+                    idleCelsius = currentTemperatureRange.IdleCelsius,
+                    fullCelsius = currentTemperatureRange.FullCelsius,
+                    minimumCelsius = TemperatureRange.MinimumCelsius,
+                    maximumCelsius = TemperatureRange.MaximumCelsius,
+                    minimumSpanCelsius = TemperatureRange.MinimumSpanCelsius,
+                    defaultIdleCelsius = TemperatureRange.DefaultIdleCelsius,
+                    defaultFullCelsius = TemperatureRange.DefaultFullCelsius
+                };
+
                 var payload = JsonSerializer.Serialize(new
                 {
                     type = "indicators",
                     items,
                     runners = new { builtin, custom },
-                    stillSets
+                    stillSets,
+                    temperatureRange
                 });
                 webView.CoreWebView2.PostWebMessageAsJson(payload);
             }

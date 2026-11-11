@@ -459,11 +459,15 @@ a {
 }
 
 .field-row select,
-.field-row input[type="text"] {
+.field-row input[type="text"],
+.field-row input[type="number"] {
   border: 1px solid var(--outline);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   background: #fff;
+}
+.field-row input[type="number"] {
+  max-width: 160px;
 }
 
 .tint-strength-row input[type="range"] {

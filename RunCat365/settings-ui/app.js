@@ -26,6 +26,16 @@
   /** @type {Array<{ name: string, frameCount?: number }>} */
   let stillSetsCatalog = [];
 
+  let temperatureRange = {
+    idleCelsius: 40,
+    fullCelsius: 95,
+    minimumCelsius: 0,
+    maximumCelsius: 120,
+    minimumSpanCelsius: 5,
+    defaultIdleCelsius: 40,
+    defaultFullCelsius: 95,
+  };
+
   /** @type {number} */
   let previewLoad = 50;
   /** @type {number} */
@@ -137,7 +147,54 @@
     return Math.max(0, Math.min(100, Math.round(n)));
   }
 
-  function applyIndicatorState(items, runners, stillSets) {
+  function resolveTemperatureRange(idleCelsius, fullCelsius, editedField, current) {
+    const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+    const toWholeCelsius = (value, fallback) => {
+      const parsed = Number.parseFloat(value);
+      return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
+    };
+    const lowest = current.minimumCelsius;
+    const highest = current.maximumCelsius;
+    const span = current.minimumSpanCelsius;
+    let idle = toWholeCelsius(idleCelsius, current.idleCelsius);
+    let full = toWholeCelsius(fullCelsius, current.fullCelsius);
+    if (editedField === "full") {
+      full = clamp(full, lowest + span, highest);
+      idle = clamp(idle, lowest, full - span);
+    } else {
+      idle = clamp(idle, lowest, highest - span);
+      full = clamp(full, idle + span, highest);
+    }
+    return { idleCelsius: idle, fullCelsius: full };
+  }
+
+  function syncTemperatureRangeInputs() {
+    const idleInput = view.querySelector("#temperature-idle");
+    const fullInput = view.querySelector("#temperature-full");
+    if (idleInput instanceof HTMLInputElement) {
+      idleInput.min = String(temperatureRange.minimumCelsius);
+      idleInput.max = String(temperatureRange.maximumCelsius - temperatureRange.minimumSpanCelsius);
+      idleInput.value = String(temperatureRange.idleCelsius);
+    }
+    if (fullInput instanceof HTMLInputElement) {
+      fullInput.min = String(temperatureRange.minimumCelsius + temperatureRange.minimumSpanCelsius);
+      fullInput.max = String(temperatureRange.maximumCelsius);
+      fullInput.value = String(temperatureRange.fullCelsius);
+    }
+    const resetButton = view.querySelector("[data-temperature-range-reset]");
+    if (resetButton) {
+      resetButton.textContent = `既定値（${temperatureRange.defaultIdleCelsius}〜${temperatureRange.defaultFullCelsius}℃）に戻す`;
+    }
+  }
+
+  function applyIndicatorState(items, runners, stillSets, range) {
+    if (
+      range &&
+      Number.isFinite(range.idleCelsius) &&
+      Number.isFinite(range.fullCelsius)
+    ) {
+      temperatureRange = { ...temperatureRange, ...range };
+    }
     if (runners && Array.isArray(runners.builtin)) {
       runnersCatalog = {
         builtin: runners.builtin,
@@ -349,6 +406,8 @@
       strengthValue.textContent = String(state.colorTintStrength);
     }
 
+    syncTemperatureRangeInputs();
+
     if (previewIndicatorId === id) {
       requestPreview(id, { resetTick: true });
     }
@@ -464,6 +523,27 @@
     const checkedAttr = checked ? " checked" : "";
     const hintHidden = available ? " hidden" : "";
     const preview = runnerPreviewLabel(state);
+    const temperatureRangeSection =
+      id === "temperature"
+        ? `
+          <section class="section">
+            <h2>温度の範囲</h2>
+            <div class="field-row">
+              <label for="temperature-idle">アイドル温度（℃）</label>
+              <input type="number" id="temperature-idle" inputmode="numeric" step="1" />
+            </div>
+            <div class="field-row">
+              <label for="temperature-full">最大温度（℃）</label>
+              <input type="number" id="temperature-full" inputmode="numeric" step="1" />
+            </div>
+            <div class="card-actions">
+              <button class="btn secondary" type="button" data-temperature-range-reset></button>
+            </div>
+            <p class="hint">
+              アイドル温度以下を負荷 0%、最大温度以上を負荷 100% とみなし、速度・色の変化・静止画の切替に使います。変更は数秒で反映されます。
+            </p>
+          </section>`
+        : "";
 
     view.innerHTML = `
       <h1 class="page-title">${item.label}</h1>
@@ -522,6 +602,7 @@
               </select>
             </div>
           </section>
+${temperatureRangeSection}
         </div>
 
         <aside class="sticky-preview" aria-label="プレビュー">
@@ -652,6 +733,36 @@
         });
       });
     }
+
+    const idleInput = view.querySelector("#temperature-idle");
+    const fullInput = view.querySelector("#temperature-full");
+    if (idleInput instanceof HTMLInputElement && fullInput instanceof HTMLInputElement) {
+      const postTemperatureRange = (editedField) => {
+        const resolved = resolveTemperatureRange(
+          idleInput.value,
+          fullInput.value,
+          editedField,
+          temperatureRange
+        );
+        idleInput.value = String(resolved.idleCelsius);
+        fullInput.value = String(resolved.fullCelsius);
+        postHost({ type: "setTemperatureRange", ...resolved });
+      };
+      idleInput.addEventListener("change", () => postTemperatureRange("idle"));
+      fullInput.addEventListener("change", () => postTemperatureRange("full"));
+    }
+
+    const temperatureRangeReset = view.querySelector("[data-temperature-range-reset]");
+    if (temperatureRangeReset) {
+      temperatureRangeReset.addEventListener("click", () => {
+        postHost({
+          type: "setTemperatureRange",
+          idleCelsius: temperatureRange.defaultIdleCelsius,
+          fullCelsius: temperatureRange.defaultFullCelsius,
+        });
+      });
+    }
+    syncTemperatureRangeInputs();
 
     const previewLoadSlider = view.querySelector("#preview-load");
     const previewLoadValue = view.querySelector("[data-preview-load-value]");
@@ -943,7 +1054,12 @@
         return;
       }
       if (data.type !== "indicators") return;
-      applyIndicatorState(data.items || [], data.runners, data.stillSets || []);
+      applyIndicatorState(
+        data.items || [],
+        data.runners,
+        data.stillSets || [],
+        data.temperatureRange
+      );
       const route = currentRoute();
       const assetsMatch = /^assets\/(runners|stills)$/.exec(route);
       if (assetsMatch) {

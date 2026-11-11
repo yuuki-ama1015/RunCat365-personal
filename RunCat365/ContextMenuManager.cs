@@ -43,6 +43,8 @@ namespace RunCat365
         private readonly Action<string> onStillSetSaved;
         private readonly Action<string> onStillSetDeleted;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
+        private readonly Func<TemperatureRange> getTemperatureRange;
+        private readonly Action<int, int> setTemperatureRange;
 
         internal ContextMenuManager(
             Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
@@ -69,6 +71,8 @@ namespace RunCat365
             Action<FPSMaxLimit> setFPSMaxLimit,
             Func<TemperatureUnit> getTemperatureUnit,
             Action<TemperatureUnit> setTemperatureUnit,
+            Func<TemperatureRange> getTemperatureRange,
+            Action<int, int> setTemperatureRange,
             Func<bool> getLaunchAtStartup,
             Func<bool, bool> toggleLaunchAtStartup,
             Action openProjectPage,
@@ -108,6 +112,8 @@ namespace RunCat365
                 settingsForm?.NotifyIndicatorsChanged();
             };
             this.isSpeedSourceAvailable = isSpeedSourceAvailable;
+            this.getTemperatureRange = getTemperatureRange;
+            this.setTemperatureRange = setTemperatureRange;
 
             systemInfoMenu.Text = "-\n-\n-\n-\n-";
             systemInfoMenu.Enabled = false;
@@ -683,6 +689,8 @@ namespace RunCat365
                     setStillCrossfadeEnabled,
                     applyCustomRunner,
                     isSpeedSourceAvailable,
+                    getTemperatureRange,
+                    setTemperatureRange,
                     customRunnerRepository,
                     stillSetRepository,
                     openCustomRunnerEditor: selectName => ShowOrActivateCustomRunnerWindow(selectName),

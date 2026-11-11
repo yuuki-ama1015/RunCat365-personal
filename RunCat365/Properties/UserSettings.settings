@@ -137,5 +137,11 @@
     <Setting Name="IndicatorsMigrated" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="TemperatureIdleCelsius" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">40</Value>
+    </Setting>
+    <Setting Name="TemperatureFullCelsius" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">95</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

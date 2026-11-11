@@ -158,7 +158,9 @@ namespace RunCat365
                 customRunnerRepository,
                 stillSetRepository,
                 (source, name) => ApplyCustomRunner(source, name),
+                savedName => HandleCustomRunnerSaved(savedName),
                 deletedName => HandleCustomRunnerDeleted(deletedName),
+                savedName => HandleStillSetSaved(savedName),
                 deletedName => HandleStillSetDeleted(deletedName),
                 () => GetSystemTheme(),
                 () => manualTheme,
@@ -642,6 +644,17 @@ namespace RunCat365
             return stillSetRetryAfter.TryGetValue(name, out var retryAfter) && DateTime.UtcNow < retryAfter;
         }
 
+        private void HandleStillSetSaved(string savedName)
+        {
+            stillSetRetryAfter.Remove(savedName);
+            foreach (var config in indicatorConfigs.Values)
+            {
+                if (!config.Enabled || !config.StillModeEnabled) continue;
+                if (!string.Equals(config.StillSetName, savedName, StringComparison.OrdinalIgnoreCase)) continue;
+                ApplyIconsForConfig(config);
+            }
+        }
+
         private void HandleStillSetDeleted(string deletedName)
         {
             stillSetRetryAfter.Remove(deletedName);
@@ -679,6 +692,16 @@ namespace RunCat365
             SaveIndicatorSettings();
             contextMenuManager.ApplyCustomIcons(source, frames, GetSystemTheme(), manualTheme);
             foreach (var frame in frames) frame.Dispose();
+        }
+
+        private void HandleCustomRunnerSaved(string savedName)
+        {
+            foreach (var config in indicatorConfigs.Values)
+            {
+                if (!config.Enabled || config.StillModeEnabled) continue;
+                if (!string.Equals(config.CustomRunnerName, savedName, StringComparison.OrdinalIgnoreCase)) continue;
+                ApplyIconsForConfig(config);
+            }
         }
 
         private void HandleCustomRunnerDeleted(string deletedName)

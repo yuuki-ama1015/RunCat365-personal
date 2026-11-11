@@ -38,7 +38,9 @@ namespace RunCat365
         private readonly Action<SpeedSource, string> applyCustomRunner;
         private readonly CustomRunnerRepository customRunnerRepository;
         private readonly StillSetRepository stillSetRepository;
+        private readonly Action<string> onCustomRunnerSaved;
         private readonly Action<string> onCustomRunnerDeleted;
+        private readonly Action<string> onStillSetSaved;
         private readonly Action<string> onStillSetDeleted;
         private readonly Func<SpeedSource, bool> isSpeedSourceAvailable;
 
@@ -55,7 +57,9 @@ namespace RunCat365
             CustomRunnerRepository customRunnerRepository,
             StillSetRepository stillSetRepository,
             Action<SpeedSource, string> applyCustomRunner,
+            Action<string> onCustomRunnerSaved,
             Action<string> onCustomRunnerDeleted,
+            Action<string> onStillSetSaved,
             Action<string> onStillSetDeleted,
             Func<Theme> getSystemTheme,
             Func<Theme> getManualTheme,
@@ -83,9 +87,19 @@ namespace RunCat365
             this.applyCustomRunner = applyCustomRunner;
             this.customRunnerRepository = customRunnerRepository;
             this.stillSetRepository = stillSetRepository;
+            this.onCustomRunnerSaved = savedName =>
+            {
+                onCustomRunnerSaved(savedName);
+                settingsForm?.NotifyIndicatorsChanged();
+            };
             this.onCustomRunnerDeleted = deletedName =>
             {
                 onCustomRunnerDeleted(deletedName);
+                settingsForm?.NotifyIndicatorsChanged();
+            };
+            this.onStillSetSaved = savedName =>
+            {
+                onStillSetSaved(savedName);
                 settingsForm?.NotifyIndicatorsChanged();
             };
             this.onStillSetDeleted = deletedName =>
@@ -626,7 +640,11 @@ namespace RunCat365
         {
             if (customRunnerForm is null)
             {
-                customRunnerForm = new CustomRunnerForm(customRunnerRepository, onCustomRunnerDeleted);
+                customRunnerForm = new CustomRunnerForm(
+                    customRunnerRepository,
+                    onCustomRunnerSaved,
+                    onCustomRunnerDeleted
+                );
                 customRunnerForm.FormClosed += (sender, e) =>
                 {
                     customRunnerForm = null;
@@ -736,7 +754,7 @@ namespace RunCat365
                 stillSetForm = new StillSetForm(
                     stillSetRepository,
                     selectName,
-                    onSaved: _ => settingsForm?.NotifyIndicatorsChanged(),
+                    onSaved: name => onStillSetSaved(name),
                     onDeleted: name => onStillSetDeleted(name)
                 );
                 stillSetForm.FormClosed += (_, _) =>

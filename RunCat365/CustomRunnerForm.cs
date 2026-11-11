@@ -25,6 +25,7 @@ namespace RunCat365
         private const int RUNNER_NAME_MAX_LENGTH = 30;
 
         private readonly CustomRunnerRepository repository;
+        private readonly Action<string> onCustomRunnerSaved;
         private readonly Action<string> onCustomRunnerDeleted;
         private readonly string fontFamily;
         private readonly Font tileLabelFont;
@@ -47,10 +48,12 @@ namespace RunCat365
 
         internal CustomRunnerForm(
             CustomRunnerRepository repository,
+            Action<string> onCustomRunnerSaved,
             Action<string> onCustomRunnerDeleted
         )
         {
             this.repository = repository;
+            this.onCustomRunnerSaved = onCustomRunnerSaved;
             this.onCustomRunnerDeleted = onCustomRunnerDeleted;
             fontFamily = SupportedLanguageExtension.GetCurrentLanguage().GetFontName();
             tileLabelFont = new Font(fontFamily, 7.5F);
@@ -870,6 +873,7 @@ namespace RunCat365
 
             if (repository.Save(name, pendingFrames))
             {
+                onCustomRunnerSaved(name);
                 RefreshRunnerList();
                 for (int i = 0; i < runnerListBox.Items.Count; i++)
                 {

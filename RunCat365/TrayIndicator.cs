@@ -33,7 +33,7 @@ namespace RunCat365
         private readonly FormsTimer crossfadeTimer;
         private int current;
         private List<Bitmap>? sourceFrames;
-        private bool ownsSourceFrames;
+        private bool hasCustomSourceFrames;
         private Theme currentTheme = Theme.Light;
         private int? tintStep;
         private int tintStrength = 100;
@@ -91,7 +91,7 @@ namespace RunCat365
             }
         }
 
-        internal bool HasActiveCustomIcons => ownsSourceFrames && sourceFrames is not null;
+        internal bool HasActiveCustomIcons => hasCustomSourceFrames && sourceFrames is not null;
 
         internal bool IsStillMode => stillMode;
 
@@ -171,7 +171,7 @@ namespace RunCat365
                 }
             }
             sourceFrames = bitmaps;
-            ownsSourceFrames = false;
+            hasCustomSourceFrames = false;
             currentTheme = ResolveTheme(systemTheme, manualTheme);
             RebuildIconsFromSource();
             RestartAnimationIfVisible();
@@ -182,7 +182,7 @@ namespace RunCat365
             ExitStillMode();
             ClearSourceFrames();
             sourceFrames = frames.Select(f => new Bitmap(f)).ToList();
-            ownsSourceFrames = true;
+            hasCustomSourceFrames = true;
             currentTheme = ResolveTheme(systemTheme, manualTheme);
             RebuildIconsFromSource();
             RestartAnimationIfVisible();
@@ -196,7 +196,7 @@ namespace RunCat365
             CancelCrossfade(commitTarget: false);
             ClearSourceFrames();
             sourceFrames = frames.Select(f => new Bitmap(f)).ToList();
-            ownsSourceFrames = true;
+            hasCustomSourceFrames = true;
             currentTheme = ResolveTheme(systemTheme, manualTheme);
             stillMode = true;
             tintStep = null;
@@ -478,12 +478,9 @@ namespace RunCat365
         private void ClearSourceFrames()
         {
             if (sourceFrames is null) return;
-            if (ownsSourceFrames)
-            {
-                foreach (var bitmap in sourceFrames) bitmap.Dispose();
-            }
+            foreach (var bitmap in sourceFrames) bitmap.Dispose();
             sourceFrames = null;
-            ownsSourceFrames = false;
+            hasCustomSourceFrames = false;
         }
 
         private static Theme ResolveTheme(Theme systemTheme, Theme manualTheme)

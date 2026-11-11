@@ -513,7 +513,11 @@ namespace RunCat365
             var iconName = $"{runner.GetString()}_0".ToLower();
             var obj = Resources.ResourceManager.GetObject(iconName);
             if (obj is not Bitmap bitmap) return null;
-            return systemTheme == Theme.Light ? bitmap : bitmap.Recolor(color);
+            if (systemTheme == Theme.Light) return bitmap;
+            using (bitmap)
+            {
+                return bitmap.Recolor(color);
+            }
         }
 
         private void RefreshCustomRunnerMenu(

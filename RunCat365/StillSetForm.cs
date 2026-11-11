@@ -180,11 +180,12 @@ namespace RunCat365
         private void RebuildFrameGrid()
         {
             framePanel.SuspendLayout();
-            foreach (Control oldTile in framePanel.Controls)
+            var oldTiles = framePanel.Controls.Cast<Control>().ToArray();
+            framePanel.Controls.Clear();
+            foreach (var oldTile in oldTiles)
             {
                 oldTile.Dispose();
             }
-            framePanel.Controls.Clear();
 
             for (int i = 0; i < pendingFrames.Count; i++)
             {

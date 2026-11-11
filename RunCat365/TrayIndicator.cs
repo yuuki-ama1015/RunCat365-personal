@@ -138,7 +138,7 @@ namespace RunCat365
             if (Nullable.Equals(tintStep, normalized) && tintStrength == normalizedStrength) return;
             tintStep = normalized;
             tintStrength = normalizedStrength;
-            RebuildIconsFromSource();
+            RebuildIconsFromSource(keepAnimationPosition: true);
         }
 
         /// <summary>
@@ -150,7 +150,7 @@ namespace RunCat365
             var normalizedStrength = Math.Clamp(strength, 0, 100);
             if (tintStrength == normalizedStrength) return;
             tintStrength = normalizedStrength;
-            if (tintStep is not null) RebuildIconsFromSource();
+            if (tintStep is not null) RebuildIconsFromSource(keepAnimationPosition: true);
         }
 
         internal void SetIcons(Theme systemTheme, Theme manualTheme, Runner runner)
@@ -255,7 +255,7 @@ namespace RunCat365
             if (!HasActiveCustomIcons) return;
             CancelCrossfade(commitTarget: false);
             currentTheme = ResolveTheme(systemTheme, manualTheme);
-            RebuildIconsFromSource();
+            RebuildIconsFromSource(keepAnimationPosition: true);
             if (stillMode) ShowStillFrame(stillFrameIndex);
         }
 
@@ -401,11 +401,11 @@ namespace RunCat365
             }
         }
 
-        private void RebuildIconsFromSource()
+        private void RebuildIconsFromSource(bool keepAnimationPosition = false)
         {
             if (sourceFrames is null || sourceFrames.Count == 0)
             {
-                ReplaceIconList([]);
+                ReplaceIconList([], keepAnimationPosition);
                 return;
             }
 
@@ -444,10 +444,10 @@ namespace RunCat365
                 }
             }
 
-            ReplaceIconList(list);
+            ReplaceIconList(list, keepAnimationPosition);
         }
 
-        private void ReplaceIconList(List<Icon> list)
+        private void ReplaceIconList(List<Icon> list, bool keepAnimationPosition)
         {
             List<Icon> oldIcons;
             lock (iconLock)
@@ -456,6 +456,10 @@ namespace RunCat365
                 oldIcons = new List<Icon>(icons);
                 icons.Clear();
                 icons.AddRange(list);
+                var frameCountUnchanged = icons.Count == oldIcons.Count;
+                var displayedFrame = keepAnimationPosition && frameCountUnchanged && icons.Count > 0
+                    ? (current + icons.Count - 1) % icons.Count
+                    : 0;
                 current = 0;
                 if (icons.Count > 0)
                 {
@@ -466,8 +470,8 @@ namespace RunCat365
                     }
                     else
                     {
-                        notifyIcon.Icon = icons[0];
-                        current = 1 % icons.Count;
+                        notifyIcon.Icon = icons[displayedFrame];
+                        current = (displayedFrame + 1) % icons.Count;
                     }
                 }
             }

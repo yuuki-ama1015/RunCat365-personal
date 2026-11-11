@@ -212,13 +212,24 @@ namespace RunCat365
             try
             {
                 var json = File.ReadAllText(profilesPath);
-                profiles = JsonSerializer.Deserialize<List<StillSetProfile>>(json) ?? [];
+                var storedProfiles = JsonSerializer.Deserialize<List<StillSetProfile?>>(json) ?? [];
+                profiles = storedProfiles
+                    .Where(IsUsableProfile)
+                    .Select(profile => profile!)
+                    .ToList();
             }
             catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
             {
                 Debug.WriteLine($"Failed to load still set profiles: {ex.Message}");
                 profiles = [];
             }
+        }
+
+        private static bool IsUsableProfile(StillSetProfile? profile)
+        {
+            return profile is not null
+                && !string.IsNullOrWhiteSpace(profile.Name)
+                && profile.FrameFileNames is not null;
         }
 
         private bool TrySaveProfiles()

@@ -858,7 +858,7 @@
   function renderNotFound(route) {
     view.innerHTML = `
       <h1 class="page-title">ページが見つかりません</h1>
-      <p class="page-subtitle">ルート: ${route}</p>
+      <p class="page-subtitle">ルート: ${escapeHtml(route)}</p>
       <a class="btn" href="#home">ホームへ戻る</a>
     `;
   }

@@ -98,7 +98,7 @@ namespace RunCat365
                 var fileName = Environment.ProcessPath;
                 if (fileName is not null)
                 {
-                    rKey.SetValue(productName, fileName);
+                    rKey.SetValue(productName, $"\"{fileName}\"");
                 }
             }
             rKey.Close();

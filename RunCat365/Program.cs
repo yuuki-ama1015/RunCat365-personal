@@ -257,22 +257,27 @@ namespace RunCat365
                     UserSettings.Default.TemperatureStillCrossfadeEnabled
                 );
 
-                foreach (var config in indicatorConfigs.Values)
-                {
-                    if (config.Enabled && !IsSpeedSourceAvailable(config.SpeedSource))
-                    {
-                        config.Enabled = false;
-                    }
-                    EnsureDisplayMode(config);
-                }
-
-                EnsureAtLeastOneEnabled();
+                NormalizeIndicatorConfigs();
                 SaveIndicatorSettings();
             }
             catch (System.Configuration.SettingsPropertyNotFoundException)
             {
                 MigrateFromLegacySettings();
             }
+        }
+
+        private void NormalizeIndicatorConfigs()
+        {
+            foreach (var config in indicatorConfigs.Values)
+            {
+                if (config.Enabled && !IsSpeedSourceAvailable(config.SpeedSource))
+                {
+                    config.Enabled = false;
+                }
+                EnsureDisplayMode(config);
+            }
+
+            EnsureAtLeastOneEnabled();
         }
 
         private void MigrateFromLegacySettings()
@@ -293,6 +298,7 @@ namespace RunCat365
                 indicatorConfigs[source] = new IndicatorConfig(source, enabled, runner, customName);
             }
 
+            NormalizeIndicatorConfigs();
             UserSettings.Default.IndicatorsMigrated = true;
         }
 
@@ -600,19 +606,26 @@ namespace RunCat365
         private void ApplyIconsForConfig(IndicatorConfig config)
         {
             if (!config.Enabled) return;
-            if (config.StillModeEnabled)
+            if (config.StillModeEnabled
+                && !string.IsNullOrEmpty(config.StillSetName)
+                && ApplyStillSet(config.SpeedSource, config.StillSetName))
             {
-                if (!string.IsNullOrEmpty(config.StillSetName))
-                {
-                    ApplyStillSet(config.SpeedSource, config.StillSetName);
-                }
-                // No set yet: keep current tray art until the user picks one.
                 return;
             }
+            ApplyRunnerIcons(config);
+        }
+
+        private void ApplyRunnerIcons(IndicatorConfig config)
+        {
             if (!string.IsNullOrEmpty(config.CustomRunnerName))
             {
-                ApplyCustomRunner(config.SpeedSource, config.CustomRunnerName);
-                return;
+                var frames = customRunnerRepository.LoadFrames(config.CustomRunnerName);
+                if (frames.Count > 0)
+                {
+                    contextMenuManager.ApplyCustomIcons(config.SpeedSource, frames, GetSystemTheme(), manualTheme);
+                    foreach (var frame in frames) frame.Dispose();
+                    return;
+                }
             }
             contextMenuManager.ApplyBuiltInIcons(
                 config.SpeedSource,
@@ -622,21 +635,22 @@ namespace RunCat365
             );
         }
 
-        private void ApplyStillSet(SpeedSource source, string name)
+        private bool ApplyStillSet(SpeedSource source, string name)
         {
-            if (!indicatorConfigs.TryGetValue(source, out var config)) return;
+            if (!indicatorConfigs.TryGetValue(source, out var config)) return false;
             var frames = stillSetRepository.LoadFrames(name);
             if (frames.Count == 0)
             {
                 stillSetRetryAfter[name] = DateTime.UtcNow + StillSetRetryBackoff;
                 StartupLog.Append($"Still set '{name}' has no loadable frames; retrying after {StillSetRetryBackoff.TotalSeconds:F0}s.");
-                return;
+                return false;
             }
             stillSetRetryAfter.Remove(name);
             config.StillSetName = name;
             contextMenuManager.ApplyStillIcons(source, frames, GetSystemTheme(), manualTheme);
             contextMenuManager.SetIndicatorStillCrossfadeEnabled(source, config.StillCrossfadeEnabled);
             foreach (var frame in frames) frame.Dispose();
+            return true;
         }
 
         private bool IsStillSetRetryBlocked(string name)
@@ -714,15 +728,7 @@ namespace RunCat365
                 }
                 config.CustomRunnerName = null;
                 SaveIndicatorSettings();
-                if (config.Enabled)
-                {
-                    contextMenuManager.ApplyBuiltInIcons(
-                        config.SpeedSource,
-                        GetSystemTheme(),
-                        manualTheme,
-                        config.Runner
-                    );
-                }
+                ApplyIconsForConfig(config);
             }
         }
 

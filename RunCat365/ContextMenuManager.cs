@@ -99,6 +99,7 @@ namespace RunCat365
             this.onCustomRunnerDeleted = deletedName =>
             {
                 onCustomRunnerDeleted(deletedName);
+                customRunnerForm?.SyncRunnerList();
                 settingsForm?.NotifyIndicatorsChanged();
             };
             this.onStillSetSaved = savedName =>

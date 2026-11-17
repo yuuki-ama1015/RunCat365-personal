@@ -919,6 +919,19 @@ namespace RunCat365
             UpdateRunnerActionButtons();
         }
 
+        internal void SyncRunnerList()
+        {
+            var selectedName = runnerListBox.SelectedItem as string;
+            runnerListBox.SelectedIndexChanged -= RunnerListBoxSelectedIndexChanged;
+            RefreshRunnerList();
+            if (selectedName is not null)
+            {
+                runnerListBox.SelectedIndex = runnerListBox.FindStringExact(selectedName);
+            }
+            runnerListBox.SelectedIndexChanged += RunnerListBoxSelectedIndexChanged;
+            UpdateRunnerActionButtons();
+        }
+
         internal void SelectRunnerByName(string? name)
         {
             if (string.IsNullOrWhiteSpace(name)) return;

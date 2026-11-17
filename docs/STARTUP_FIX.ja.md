@@ -19,7 +19,3 @@ exe をダブルクリックしても何も起きない（トレイにも出な�
 - `Main` に起動ログ (`%LocalAppData%\RunCat365\startup.log`) と短い例外 MessageBox（詳細はログ）。
 - `NetworkRepository` の NIC 統計取得を例外耐性化。
 - `IndicatorsMigrated` を正式な UserScoped 設定として登録し、欠落時はレガシー移行へフォールバック。
-
-## まだ後回し
-
-- `docs/HANDOFF.ja.md` の削除（引継ぎ完了後）

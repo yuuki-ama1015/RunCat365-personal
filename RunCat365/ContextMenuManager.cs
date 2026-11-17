@@ -328,13 +328,18 @@ namespace RunCat365
                 indicatorsMenu.DropDownItems.Add(metricMenu);
             }
 
-            indicatorsMenu.DropDownOpening += (sender, e) => RefreshEnabledCheckStates(indicatorsMenu, getConfigs);
+            indicatorsMenu.DropDownOpening += (sender, e) => RefreshIndicatorMenuStates(
+                indicatorsMenu,
+                getConfigs,
+                isSpeedSourceAvailable
+            );
             return indicatorsMenu;
         }
 
-        private static void RefreshEnabledCheckStates(
+        private static void RefreshIndicatorMenuStates(
             CustomToolStripMenuItem indicatorsMenu,
-            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs
+            Func<IReadOnlyDictionary<SpeedSource, IndicatorConfig>> getConfigs,
+            Func<SpeedSource, bool> isSpeedSourceAvailable
         )
         {
             var configs = getConfigs();
@@ -342,6 +347,7 @@ namespace RunCat365
             {
                 if (item is not ToolStripMenuItem metricMenu) continue;
                 if (metricMenu.Tag is not SpeedSource speedSource) continue;
+                metricMenu.Visible = isSpeedSourceAvailable(speedSource);
                 if (metricMenu.DropDownItems.Count > 0
                     && metricMenu.DropDownItems[0] is ToolStripMenuItem enabledItem)
                 {

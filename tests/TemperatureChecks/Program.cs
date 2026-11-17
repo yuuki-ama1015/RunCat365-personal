@@ -74,6 +74,33 @@ foreach (var (idle, full, celsius, expectedLoad) in loadCases)
 }
 Console.WriteLine($"PASS: temperature range ({rangeCases.Length + loadCases.Length} cases).");
 
+var startupCommandType = repositoryType.Assembly.GetType("RunCat365.StartupCommand", throwOnError: true)!;
+var resolveReplacement = startupCommandType.GetMethod("ResolveReplacement", flags)!;
+const string currentExecutable = @"C:\Apps\RunCat\RunCat 365.exe";
+const string otherExecutable = @"C:\Old\RunCat 365.exe";
+const string quotedCurrentExecutable = "\"" + currentExecutable + "\"";
+
+var startupCases = new (string Registered, bool OtherExists, string? Expected)[]
+{
+    (quotedCurrentExecutable, false, null),
+    (currentExecutable, false, quotedCurrentExecutable),
+    (currentExecutable.ToUpperInvariant(), false, quotedCurrentExecutable),
+    (otherExecutable, false, quotedCurrentExecutable),
+    ("\"" + otherExecutable + "\"", false, quotedCurrentExecutable),
+    (otherExecutable, true, null),
+    ("\"" + otherExecutable + "\"", true, null),
+    ("\"" + otherExecutable + "\" --minimized", false, null),
+    ("\"" + otherExecutable, false, null),
+};
+foreach (var (registered, otherExists, expected) in startupCases)
+{
+    Func<string, bool> fileExists = path => otherExists && path == otherExecutable;
+    var replacement = (string?)resolveReplacement.Invoke(null, [registered, currentExecutable, fileExists]);
+    if (replacement != expected)
+        throw new InvalidOperationException($"Unexpected startup command for {registered}: {replacement ?? "(unchanged)"}");
+}
+Console.WriteLine($"PASS: startup command ({startupCases.Length} cases).");
+
 if (args.Contains("--probe"))
 {
     Console.WriteLine($"PawnIO ready: {repositoryType.GetProperty("IsPawnIoReady", flags)!.GetValue(null)}");

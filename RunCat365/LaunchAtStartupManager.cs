@@ -72,6 +72,32 @@ namespace RunCat365
 
     internal sealed class UnpackagedLaunchAtStartupManager : ILaunchAtStartupManager
     {
+        internal UnpackagedLaunchAtStartupManager()
+        {
+            RepairRegisteredCommand();
+        }
+
+        private static void RepairRegisteredCommand()
+        {
+            var productName = Application.ProductName;
+            var executablePath = Environment.ProcessPath;
+            if (productName is null || executablePath is null) return;
+            try
+            {
+                var keyName = @"Software\Microsoft\Windows\CurrentVersion\Run";
+                using var rKey = Registry.CurrentUser.OpenSubKey(keyName, true);
+                if (rKey?.GetValue(productName) is not string registeredCommand) return;
+                var replacement = StartupCommand.ResolveReplacement(registeredCommand, executablePath, File.Exists);
+                if (replacement is not null) rKey.SetValue(productName, replacement);
+            }
+            catch (Exception exception) when (exception is UnauthorizedAccessException
+                or System.Security.SecurityException
+                or IOException)
+            {
+                StartupLog.Append($"Startup registration could not be refreshed: {exception.Message}");
+            }
+        }
+
         public bool GetEnabled()
         {
             var keyName = @"Software\Microsoft\Windows\CurrentVersion\Run";
@@ -98,7 +124,7 @@ namespace RunCat365
                 var fileName = Environment.ProcessPath;
                 if (fileName is not null)
                 {
-                    rKey.SetValue(productName, $"\"{fileName}\"");
+                    rKey.SetValue(productName, StartupCommand.ForExecutable(fileName));
                 }
             }
             rKey.Close();

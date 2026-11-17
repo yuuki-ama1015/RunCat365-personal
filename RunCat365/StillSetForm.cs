@@ -29,6 +29,9 @@ namespace RunCat365
         private readonly string? initialName;
         private readonly List<Bitmap> pendingFrames = [];
         private int selectedFrameIndex = -1;
+        private bool hasUnsavedChanges;
+
+        internal bool HasUnsavedChanges => hasUnsavedChanges;
 
         private TextBox nameTextBox = null!;
         private FlowLayoutPanel framePanel = null!;
@@ -65,7 +68,16 @@ namespace RunCat365
 
             BuildUi();
             LoadExisting(editName);
+            hasUnsavedChanges = false;
             UpdateActionState();
+        }
+
+        internal bool IsEditing(string? name)
+        {
+            var requestsNewSet = string.IsNullOrWhiteSpace(name);
+            var editsNewSet = string.IsNullOrWhiteSpace(initialName);
+            if (requestsNewSet || editsNewSet) return requestsNewSet && editsNewSet;
+            return string.Equals(initialName, name, StringComparison.OrdinalIgnoreCase);
         }
 
         private void BuildUi()
@@ -85,7 +97,11 @@ namespace RunCat365
                 ForeColor = Color.White,
                 BorderStyle = BorderStyle.FixedSingle
             };
-            nameTextBox.TextChanged += (_, _) => UpdateActionState();
+            nameTextBox.TextChanged += (_, _) =>
+            {
+                hasUnsavedChanges = true;
+                UpdateActionState();
+            };
 
             var framesLabel = new Label
             {
@@ -255,6 +271,7 @@ namespace RunCat365
             };
             if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
+            var frameCountBeforeAdding = pendingFrames.Count;
             foreach (var path in dialog.FileNames)
             {
                 if (pendingFrames.Count >= StillSetRepository.MAX_FRAME_COUNT) break;
@@ -281,6 +298,7 @@ namespace RunCat365
             {
                 selectedFrameIndex = 0;
             }
+            if (pendingFrames.Count != frameCountBeforeAdding) hasUnsavedChanges = true;
             RebuildFrameGrid();
         }
 
@@ -338,6 +356,7 @@ namespace RunCat365
             if (index < 0 || index >= pendingFrames.Count) return;
             pendingFrames[index].Dispose();
             pendingFrames.RemoveAt(index);
+            hasUnsavedChanges = true;
             if (pendingFrames.Count == 0)
             {
                 selectedFrameIndex = -1;
@@ -356,6 +375,7 @@ namespace RunCat365
             if (index < 0 || target < 0 || target >= pendingFrames.Count) return;
             (pendingFrames[index], pendingFrames[target]) = (pendingFrames[target], pendingFrames[index]);
             selectedFrameIndex = target;
+            hasUnsavedChanges = true;
             RebuildFrameGrid();
         }
 

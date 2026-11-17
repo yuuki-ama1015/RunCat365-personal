@@ -761,19 +761,27 @@ namespace RunCat365
 
         private void ShowOrActivateStillSetWindow(string? selectName = null)
         {
+            if (stillSetForm is not null
+                && !stillSetForm.IsEditing(selectName)
+                && !stillSetForm.HasUnsavedChanges)
+            {
+                stillSetForm.Close();
+            }
+
             if (stillSetForm is null)
             {
-                stillSetForm = new StillSetForm(
+                var openedForm = new StillSetForm(
                     stillSetRepository,
                     selectName,
                     onSaved: name => onStillSetSaved(name),
                     onDeleted: name => onStillSetDeleted(name)
                 );
-                stillSetForm.FormClosed += (_, _) =>
+                openedForm.FormClosed += (_, _) =>
                 {
-                    stillSetForm = null;
+                    if (ReferenceEquals(stillSetForm, openedForm)) stillSetForm = null;
                     settingsForm?.NotifyIndicatorsChanged();
                 };
+                stillSetForm = openedForm;
                 stillSetForm.Show();
             }
             else

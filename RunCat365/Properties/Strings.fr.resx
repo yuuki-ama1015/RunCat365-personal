@@ -309,4 +309,124 @@
   <data name="Window_Settings" xml:space="preserve">
     <value>Paramètres</value>
   </data>
+  <data name="SystemInfo_TemperatureSourceRootFormat" xml:space="preserve">
+    <value>Température ({0}) :</value>
+  </data>
+  <data name="SystemInfo_TemperatureWithSourceFormat" xml:space="preserve">
+    <value>Température : {0} ({1})</value>
+  </data>
+  <data name="TemperatureSource_Cpu" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="TemperatureSource_System" xml:space="preserve">
+    <value>Système</value>
+  </data>
+  <data name="AssetName_Empty" xml:space="preserve">
+    <value>Veuillez saisir un nom.</value>
+  </data>
+  <data name="AssetName_LeadingTrailingSpace" xml:space="preserve">
+    <value>Le nom ne peut pas commencer ni se terminer par un espace.</value>
+  </data>
+  <data name="AssetName_TrailingDot" xml:space="preserve">
+    <value>Le nom ne peut pas se terminer par un point (.).</value>
+  </data>
+  <data name="AssetName_DotsOnly" xml:space="preserve">
+    <value>Le nom ne peut pas être composé uniquement de points.</value>
+  </data>
+  <data name="AssetName_InvalidChars" xml:space="preserve">
+    <value>Le nom contient des caractères interdits dans les noms de fichier (\ / : * ? " &lt; &gt; |).</value>
+  </data>
+  <data name="AssetName_Reserved" xml:space="preserve">
+    <value>Ce nom est réservé par Windows (CON, PRN, AUX, NUL, COM1–9, LPT1–9).</value>
+  </data>
+  <data name="Asset_SaveFailed" xml:space="preserve">
+    <value>Échec de l'enregistrement.</value>
+  </data>
+  <data name="Message_Confirm" xml:space="preserve">
+    <value>Confirmation</value>
+  </data>
+  <data name="Message_AlreadyRunning" xml:space="preserve">
+    <value>RunCat 365 est déjà en cours d'exécution.</value>
+  </data>
+  <data name="Message_StartupFailed" xml:space="preserve">
+    <value>RunCat 365 n'a pas pu démarrer.
+
+Consultez startup.log pour plus de détails.</value>
+  </data>
+  <data name="Message_StartupErrorTitle" xml:space="preserve">
+    <value>RunCat 365 - Erreur de démarrage</value>
+  </data>
+  <data name="Message_SettingsUIInitFailed" xml:space="preserve">
+    <value>Impossible d'initialiser l'interface des paramètres.
+{0}</value>
+  </data>
+  <data name="Gif_LoadFailed" xml:space="preserve">
+    <value>Impossible de charger le GIF.</value>
+  </data>
+  <data name="Gif_NotEnoughFramesFormat" xml:space="preserve">
+    <value>Le GIF ne contient pas assez d'images. Il en faut au moins {0}. (actuellement {1})</value>
+  </data>
+  <data name="Preview_Default" xml:space="preserve">
+    <value>Aperçu</value>
+  </data>
+  <data name="Preview_NoStillSet" xml:space="preserve">
+    <value>Aucun jeu d'images fixes</value>
+  </data>
+  <data name="Preview_SelectStillSet" xml:space="preserve">
+    <value>Sélectionnez un jeu d'images fixes</value>
+  </data>
+  <data name="Preview_NoAsset" xml:space="preserve">
+    <value>Aucune image</value>
+  </data>
+  <data name="StillSet_WindowTitle" xml:space="preserve">
+    <value>Pour le mode image fixe — Modifier</value>
+  </data>
+  <data name="StillSet_Name" xml:space="preserve">
+    <value>Nom</value>
+  </data>
+  <data name="StillSet_FramesLabel" xml:space="preserve">
+    <value>Images (charge faible → charge élevée)</value>
+  </data>
+  <data name="StillSet_Add" xml:space="preserve">
+    <value>Ajouter…</value>
+  </data>
+  <data name="StillSet_Remove" xml:space="preserve">
+    <value>Retirer</value>
+  </data>
+  <data name="StillSet_MoveUp" xml:space="preserve">
+    <value>Monter</value>
+  </data>
+  <data name="StillSet_MoveDown" xml:space="preserve">
+    <value>Descendre</value>
+  </data>
+  <data name="StillSet_RequirementsFormat" xml:space="preserve">
+    <value>{0}–{1} images PNG / GIF (PNG transparent recommandé). Redimensionnées automatiquement pour la zone de notification.</value>
+  </data>
+  <data name="StillSet_Save" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="StillSet_Delete" xml:space="preserve">
+    <value>Supprimer…</value>
+  </data>
+  <data name="StillSet_Close" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="StillSet_SelectFramesTitle" xml:space="preserve">
+    <value>Sélectionner des images pour le mode image fixe</value>
+  </data>
+  <data name="StillSet_HintOkFormat" xml:space="preserve">
+    <value>{0}–{1} PNG transparents. Redimensionnés automatiquement pour la zone de notification. ({2} images)</value>
+  </data>
+  <data name="StillSet_HintNeedFormat" xml:space="preserve">
+    <value>{0}–{1} PNG transparents sont nécessaires. (actuellement {2})</value>
+  </data>
+  <data name="StillSet_FrameCountFormat" xml:space="preserve">
+    <value>Utilisez entre {0} et {1} images.</value>
+  </data>
+  <data name="StillSet_ConfirmOverwriteFormat" xml:space="preserve">
+    <value>« {0} » existe déjà. Écraser ?</value>
+  </data>
+  <data name="StillSet_ConfirmDeleteFormat" xml:space="preserve">
+    <value>Supprimer « {0} » ?</value>
+  </data>
 </root>

@@ -309,4 +309,124 @@
   <data name="Window_Settings" xml:space="preserve">
     <value>设置</value>
   </data>
+  <data name="SystemInfo_TemperatureSourceRootFormat" xml:space="preserve">
+    <value>温度（{0}）:</value>
+  </data>
+  <data name="SystemInfo_TemperatureWithSourceFormat" xml:space="preserve">
+    <value>温度: {0}（{1}）</value>
+  </data>
+  <data name="TemperatureSource_Cpu" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="TemperatureSource_System" xml:space="preserve">
+    <value>系统</value>
+  </data>
+  <data name="AssetName_Empty" xml:space="preserve">
+    <value>请输入名称。</value>
+  </data>
+  <data name="AssetName_LeadingTrailingSpace" xml:space="preserve">
+    <value>名称不能以空格开头或结尾。</value>
+  </data>
+  <data name="AssetName_TrailingDot" xml:space="preserve">
+    <value>名称不能以句点（.）结尾。</value>
+  </data>
+  <data name="AssetName_DotsOnly" xml:space="preserve">
+    <value>名称不能只包含句点。</value>
+  </data>
+  <data name="AssetName_InvalidChars" xml:space="preserve">
+    <value>名称包含不能用于文件名的字符（\ / : * ? " &lt; &gt; |）。</value>
+  </data>
+  <data name="AssetName_Reserved" xml:space="preserve">
+    <value>此名称为 Windows 保留名称（CON、PRN、AUX、NUL、COM1–9、LPT1–9）。</value>
+  </data>
+  <data name="Asset_SaveFailed" xml:space="preserve">
+    <value>保存失败。</value>
+  </data>
+  <data name="Message_Confirm" xml:space="preserve">
+    <value>确认</value>
+  </data>
+  <data name="Message_AlreadyRunning" xml:space="preserve">
+    <value>RunCat 365 已在运行。</value>
+  </data>
+  <data name="Message_StartupFailed" xml:space="preserve">
+    <value>RunCat 365 启动失败。
+
+详情请查看 startup.log。</value>
+  </data>
+  <data name="Message_StartupErrorTitle" xml:space="preserve">
+    <value>RunCat 365 - 启动错误</value>
+  </data>
+  <data name="Message_SettingsUIInitFailed" xml:space="preserve">
+    <value>无法初始化设置界面。
+{0}</value>
+  </data>
+  <data name="Gif_LoadFailed" xml:space="preserve">
+    <value>无法加载 GIF。</value>
+  </data>
+  <data name="Gif_NotEnoughFramesFormat" xml:space="preserve">
+    <value>GIF 的帧数不足。至少需要 {0} 帧。（当前 {1} 帧）</value>
+  </data>
+  <data name="Preview_Default" xml:space="preserve">
+    <value>预览</value>
+  </data>
+  <data name="Preview_NoStillSet" xml:space="preserve">
+    <value>没有静态图组</value>
+  </data>
+  <data name="Preview_SelectStillSet" xml:space="preserve">
+    <value>请选择静态图组</value>
+  </data>
+  <data name="Preview_NoAsset" xml:space="preserve">
+    <value>没有帧</value>
+  </data>
+  <data name="StillSet_WindowTitle" xml:space="preserve">
+    <value>静态图模式 — 编辑</value>
+  </data>
+  <data name="StillSet_Name" xml:space="preserve">
+    <value>名称</value>
+  </data>
+  <data name="StillSet_FramesLabel" xml:space="preserve">
+    <value>帧（低负载 → 高负载）</value>
+  </data>
+  <data name="StillSet_Add" xml:space="preserve">
+    <value>添加…</value>
+  </data>
+  <data name="StillSet_Remove" xml:space="preserve">
+    <value>移除</value>
+  </data>
+  <data name="StillSet_MoveUp" xml:space="preserve">
+    <value>上移</value>
+  </data>
+  <data name="StillSet_MoveDown" xml:space="preserve">
+    <value>下移</value>
+  </data>
+  <data name="StillSet_RequirementsFormat" xml:space="preserve">
+    <value>{0}–{1} 帧 PNG / GIF（推荐透明 PNG）。会自动调整为托盘尺寸。</value>
+  </data>
+  <data name="StillSet_Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="StillSet_Delete" xml:space="preserve">
+    <value>删除…</value>
+  </data>
+  <data name="StillSet_Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="StillSet_SelectFramesTitle" xml:space="preserve">
+    <value>选择静态图模式的帧</value>
+  </data>
+  <data name="StillSet_HintOkFormat" xml:space="preserve">
+    <value>{0}–{1} 张透明 PNG。会自动调整为托盘尺寸。（{2} 帧）</value>
+  </data>
+  <data name="StillSet_HintNeedFormat" xml:space="preserve">
+    <value>需要 {0}–{1} 张透明 PNG。（当前 {2} 张）</value>
+  </data>
+  <data name="StillSet_FrameCountFormat" xml:space="preserve">
+    <value>请使用 {0}–{1} 帧。</value>
+  </data>
+  <data name="StillSet_ConfirmOverwriteFormat" xml:space="preserve">
+    <value>"{0}"已存在。是否覆盖？</value>
+  </data>
+  <data name="StillSet_ConfirmDeleteFormat" xml:space="preserve">
+    <value>删除"{0}"？</value>
+  </data>
 </root>

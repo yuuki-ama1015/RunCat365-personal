@@ -309,4 +309,124 @@
   <data name="Window_Settings" xml:space="preserve">
     <value>설정</value>
   </data>
+  <data name="SystemInfo_TemperatureSourceRootFormat" xml:space="preserve">
+    <value>온도 ({0}):</value>
+  </data>
+  <data name="SystemInfo_TemperatureWithSourceFormat" xml:space="preserve">
+    <value>온도: {0} ({1})</value>
+  </data>
+  <data name="TemperatureSource_Cpu" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="TemperatureSource_System" xml:space="preserve">
+    <value>시스템</value>
+  </data>
+  <data name="AssetName_Empty" xml:space="preserve">
+    <value>이름을 입력하세요.</value>
+  </data>
+  <data name="AssetName_LeadingTrailingSpace" xml:space="preserve">
+    <value>이름의 앞이나 뒤에 공백을 사용할 수 없습니다.</value>
+  </data>
+  <data name="AssetName_TrailingDot" xml:space="preserve">
+    <value>이름은 마침표(.)로 끝날 수 없습니다.</value>
+  </data>
+  <data name="AssetName_DotsOnly" xml:space="preserve">
+    <value>마침표만으로 된 이름은 사용할 수 없습니다.</value>
+  </data>
+  <data name="AssetName_InvalidChars" xml:space="preserve">
+    <value>이름에 파일 이름으로 사용할 수 없는 문자(\ / : * ? " &lt; &gt; |)가 포함되어 있습니다.</value>
+  </data>
+  <data name="AssetName_Reserved" xml:space="preserve">
+    <value>Windows에서 예약된 이름입니다(CON, PRN, AUX, NUL, COM1–9, LPT1–9).</value>
+  </data>
+  <data name="Asset_SaveFailed" xml:space="preserve">
+    <value>저장하지 못했습니다.</value>
+  </data>
+  <data name="Message_Confirm" xml:space="preserve">
+    <value>확인</value>
+  </data>
+  <data name="Message_AlreadyRunning" xml:space="preserve">
+    <value>RunCat 365가 이미 실행 중입니다.</value>
+  </data>
+  <data name="Message_StartupFailed" xml:space="preserve">
+    <value>RunCat 365를 시작하지 못했습니다.
+
+자세한 내용은 startup.log를 확인하세요.</value>
+  </data>
+  <data name="Message_StartupErrorTitle" xml:space="preserve">
+    <value>RunCat 365 - 시작 오류</value>
+  </data>
+  <data name="Message_SettingsUIInitFailed" xml:space="preserve">
+    <value>설정 화면을 초기화하지 못했습니다.
+{0}</value>
+  </data>
+  <data name="Gif_LoadFailed" xml:space="preserve">
+    <value>GIF를 불러오지 못했습니다.</value>
+  </data>
+  <data name="Gif_NotEnoughFramesFormat" xml:space="preserve">
+    <value>GIF의 프레임 수가 부족합니다. 최소 {0}개가 필요합니다. (현재 {1}개)</value>
+  </data>
+  <data name="Preview_Default" xml:space="preserve">
+    <value>미리보기</value>
+  </data>
+  <data name="Preview_NoStillSet" xml:space="preserve">
+    <value>정지 이미지 세트 없음</value>
+  </data>
+  <data name="Preview_SelectStillSet" xml:space="preserve">
+    <value>정지 이미지 세트를 선택하세요</value>
+  </data>
+  <data name="Preview_NoAsset" xml:space="preserve">
+    <value>프레임 없음</value>
+  </data>
+  <data name="StillSet_WindowTitle" xml:space="preserve">
+    <value>정지 이미지 모드용 — 편집</value>
+  </data>
+  <data name="StillSet_Name" xml:space="preserve">
+    <value>이름</value>
+  </data>
+  <data name="StillSet_FramesLabel" xml:space="preserve">
+    <value>프레임 (낮은 부하 → 높은 부하)</value>
+  </data>
+  <data name="StillSet_Add" xml:space="preserve">
+    <value>추가…</value>
+  </data>
+  <data name="StillSet_Remove" xml:space="preserve">
+    <value>제거</value>
+  </data>
+  <data name="StillSet_MoveUp" xml:space="preserve">
+    <value>위로</value>
+  </data>
+  <data name="StillSet_MoveDown" xml:space="preserve">
+    <value>아래로</value>
+  </data>
+  <data name="StillSet_RequirementsFormat" xml:space="preserve">
+    <value>PNG / GIF 프레임 {0}–{1}개 (투명 PNG 권장). 트레이에 맞게 자동으로 크기가 조정됩니다.</value>
+  </data>
+  <data name="StillSet_Save" xml:space="preserve">
+    <value>저장</value>
+  </data>
+  <data name="StillSet_Delete" xml:space="preserve">
+    <value>삭제…</value>
+  </data>
+  <data name="StillSet_Close" xml:space="preserve">
+    <value>닫기</value>
+  </data>
+  <data name="StillSet_SelectFramesTitle" xml:space="preserve">
+    <value>정지 이미지 모드용 프레임 선택</value>
+  </data>
+  <data name="StillSet_HintOkFormat" xml:space="preserve">
+    <value>투명 PNG {0}–{1}개. 트레이에 맞게 자동으로 크기가 조정됩니다. ({2}개)</value>
+  </data>
+  <data name="StillSet_HintNeedFormat" xml:space="preserve">
+    <value>투명 PNG {0}–{1}개가 필요합니다. (현재 {2}개)</value>
+  </data>
+  <data name="StillSet_FrameCountFormat" xml:space="preserve">
+    <value>프레임은 {0}–{1}개로 설정하세요.</value>
+  </data>
+  <data name="StillSet_ConfirmOverwriteFormat" xml:space="preserve">
+    <value>"{0}"이(가) 이미 존재합니다. 덮어쓰시겠습니까?</value>
+  </data>
+  <data name="StillSet_ConfirmDeleteFormat" xml:space="preserve">
+    <value>"{0}"을(를) 삭제하시겠습니까?</value>
+  </data>
 </root>

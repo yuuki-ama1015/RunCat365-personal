@@ -309,4 +309,124 @@
   <data name="Window_Settings" xml:space="preserve">
     <value>Ajustes</value>
   </data>
+  <data name="SystemInfo_TemperatureSourceRootFormat" xml:space="preserve">
+    <value>Temperatura ({0}):</value>
+  </data>
+  <data name="SystemInfo_TemperatureWithSourceFormat" xml:space="preserve">
+    <value>Temperatura: {0} ({1})</value>
+  </data>
+  <data name="TemperatureSource_Cpu" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="TemperatureSource_System" xml:space="preserve">
+    <value>Sistema</value>
+  </data>
+  <data name="AssetName_Empty" xml:space="preserve">
+    <value>Introduce un nombre.</value>
+  </data>
+  <data name="AssetName_LeadingTrailingSpace" xml:space="preserve">
+    <value>El nombre no puede empezar ni terminar con un espacio.</value>
+  </data>
+  <data name="AssetName_TrailingDot" xml:space="preserve">
+    <value>El nombre no puede terminar con un punto (.).</value>
+  </data>
+  <data name="AssetName_DotsOnly" xml:space="preserve">
+    <value>El nombre no puede estar formado solo por puntos.</value>
+  </data>
+  <data name="AssetName_InvalidChars" xml:space="preserve">
+    <value>El nombre contiene caracteres que no se pueden usar en nombres de archivo (\ / : * ? " &lt; &gt; |).</value>
+  </data>
+  <data name="AssetName_Reserved" xml:space="preserve">
+    <value>Este nombre está reservado por Windows (CON, PRN, AUX, NUL, COM1–9, LPT1–9).</value>
+  </data>
+  <data name="Asset_SaveFailed" xml:space="preserve">
+    <value>No se pudo guardar.</value>
+  </data>
+  <data name="Message_Confirm" xml:space="preserve">
+    <value>Confirmación</value>
+  </data>
+  <data name="Message_AlreadyRunning" xml:space="preserve">
+    <value>RunCat 365 ya se está ejecutando.</value>
+  </data>
+  <data name="Message_StartupFailed" xml:space="preserve">
+    <value>No se pudo iniciar RunCat 365.
+
+Consulta startup.log para más detalles.</value>
+  </data>
+  <data name="Message_StartupErrorTitle" xml:space="preserve">
+    <value>RunCat 365 - Error de inicio</value>
+  </data>
+  <data name="Message_SettingsUIInitFailed" xml:space="preserve">
+    <value>No se pudo inicializar la interfaz de ajustes.
+{0}</value>
+  </data>
+  <data name="Gif_LoadFailed" xml:space="preserve">
+    <value>No se pudo cargar el GIF.</value>
+  </data>
+  <data name="Gif_NotEnoughFramesFormat" xml:space="preserve">
+    <value>El GIF no tiene suficientes fotogramas. Se necesitan al menos {0}. (actualmente {1})</value>
+  </data>
+  <data name="Preview_Default" xml:space="preserve">
+    <value>Vista previa</value>
+  </data>
+  <data name="Preview_NoStillSet" xml:space="preserve">
+    <value>Sin conjunto de imágenes fijas</value>
+  </data>
+  <data name="Preview_SelectStillSet" xml:space="preserve">
+    <value>Selecciona un conjunto de imágenes fijas</value>
+  </data>
+  <data name="Preview_NoAsset" xml:space="preserve">
+    <value>Sin fotogramas</value>
+  </data>
+  <data name="StillSet_WindowTitle" xml:space="preserve">
+    <value>Para el modo de imagen fija — Editar</value>
+  </data>
+  <data name="StillSet_Name" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
+  <data name="StillSet_FramesLabel" xml:space="preserve">
+    <value>Fotogramas (carga baja → carga alta)</value>
+  </data>
+  <data name="StillSet_Add" xml:space="preserve">
+    <value>Añadir…</value>
+  </data>
+  <data name="StillSet_Remove" xml:space="preserve">
+    <value>Quitar</value>
+  </data>
+  <data name="StillSet_MoveUp" xml:space="preserve">
+    <value>Subir</value>
+  </data>
+  <data name="StillSet_MoveDown" xml:space="preserve">
+    <value>Bajar</value>
+  </data>
+  <data name="StillSet_RequirementsFormat" xml:space="preserve">
+    <value>{0}–{1} fotogramas PNG / GIF (se recomienda PNG transparente). Se redimensionan automáticamente para la bandeja.</value>
+  </data>
+  <data name="StillSet_Save" xml:space="preserve">
+    <value>Guardar</value>
+  </data>
+  <data name="StillSet_Delete" xml:space="preserve">
+    <value>Eliminar…</value>
+  </data>
+  <data name="StillSet_Close" xml:space="preserve">
+    <value>Cerrar</value>
+  </data>
+  <data name="StillSet_SelectFramesTitle" xml:space="preserve">
+    <value>Selecciona fotogramas para el modo de imagen fija</value>
+  </data>
+  <data name="StillSet_HintOkFormat" xml:space="preserve">
+    <value>{0}–{1} PNG transparentes. Se redimensionan automáticamente para la bandeja. ({2} fotogramas)</value>
+  </data>
+  <data name="StillSet_HintNeedFormat" xml:space="preserve">
+    <value>Se necesitan {0}–{1} PNG transparentes. (actualmente {2})</value>
+  </data>
+  <data name="StillSet_FrameCountFormat" xml:space="preserve">
+    <value>Usa entre {0} y {1} fotogramas.</value>
+  </data>
+  <data name="StillSet_ConfirmOverwriteFormat" xml:space="preserve">
+    <value>"{0}" ya existe. ¿Sobrescribir?</value>
+  </data>
+  <data name="StillSet_ConfirmDeleteFormat" xml:space="preserve">
+    <value>¿Eliminar "{0}"?</value>
+  </data>
 </root>

@@ -309,4 +309,124 @@
   <data name="Window_Settings" xml:space="preserve">
     <value>Einstellungen</value>
   </data>
+  <data name="SystemInfo_TemperatureSourceRootFormat" xml:space="preserve">
+    <value>Temperatur ({0}):</value>
+  </data>
+  <data name="SystemInfo_TemperatureWithSourceFormat" xml:space="preserve">
+    <value>Temperatur: {0} ({1})</value>
+  </data>
+  <data name="TemperatureSource_Cpu" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="TemperatureSource_System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="AssetName_Empty" xml:space="preserve">
+    <value>Bitte einen Namen eingeben.</value>
+  </data>
+  <data name="AssetName_LeadingTrailingSpace" xml:space="preserve">
+    <value>Der Name darf nicht mit einem Leerzeichen beginnen oder enden.</value>
+  </data>
+  <data name="AssetName_TrailingDot" xml:space="preserve">
+    <value>Der Name darf nicht mit einem Punkt (.) enden.</value>
+  </data>
+  <data name="AssetName_DotsOnly" xml:space="preserve">
+    <value>Der Name darf nicht nur aus Punkten bestehen.</value>
+  </data>
+  <data name="AssetName_InvalidChars" xml:space="preserve">
+    <value>Der Name enthält Zeichen, die in Dateinamen nicht erlaubt sind (\ / : * ? " &lt; &gt; |).</value>
+  </data>
+  <data name="AssetName_Reserved" xml:space="preserve">
+    <value>Dieser Name ist von Windows reserviert (CON, PRN, AUX, NUL, COM1–9, LPT1–9).</value>
+  </data>
+  <data name="Asset_SaveFailed" xml:space="preserve">
+    <value>Speichern fehlgeschlagen.</value>
+  </data>
+  <data name="Message_Confirm" xml:space="preserve">
+    <value>Bestätigung</value>
+  </data>
+  <data name="Message_AlreadyRunning" xml:space="preserve">
+    <value>RunCat 365 wird bereits ausgeführt.</value>
+  </data>
+  <data name="Message_StartupFailed" xml:space="preserve">
+    <value>RunCat 365 konnte nicht gestartet werden.
+
+Details stehen in startup.log.</value>
+  </data>
+  <data name="Message_StartupErrorTitle" xml:space="preserve">
+    <value>RunCat 365 - Startfehler</value>
+  </data>
+  <data name="Message_SettingsUIInitFailed" xml:space="preserve">
+    <value>Die Einstellungsoberfläche konnte nicht initialisiert werden.
+{0}</value>
+  </data>
+  <data name="Gif_LoadFailed" xml:space="preserve">
+    <value>Das GIF konnte nicht geladen werden.</value>
+  </data>
+  <data name="Gif_NotEnoughFramesFormat" xml:space="preserve">
+    <value>Das GIF hat zu wenige Frames. Mindestens {0} sind erforderlich. (aktuell {1})</value>
+  </data>
+  <data name="Preview_Default" xml:space="preserve">
+    <value>Vorschau</value>
+  </data>
+  <data name="Preview_NoStillSet" xml:space="preserve">
+    <value>Kein Standbild-Set</value>
+  </data>
+  <data name="Preview_SelectStillSet" xml:space="preserve">
+    <value>Standbild-Set auswählen</value>
+  </data>
+  <data name="Preview_NoAsset" xml:space="preserve">
+    <value>Keine Frames</value>
+  </data>
+  <data name="StillSet_WindowTitle" xml:space="preserve">
+    <value>Für den Standbildmodus — Bearbeiten</value>
+  </data>
+  <data name="StillSet_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="StillSet_FramesLabel" xml:space="preserve">
+    <value>Frames (niedrige Last → hohe Last)</value>
+  </data>
+  <data name="StillSet_Add" xml:space="preserve">
+    <value>Hinzufügen…</value>
+  </data>
+  <data name="StillSet_Remove" xml:space="preserve">
+    <value>Entfernen</value>
+  </data>
+  <data name="StillSet_MoveUp" xml:space="preserve">
+    <value>Nach oben</value>
+  </data>
+  <data name="StillSet_MoveDown" xml:space="preserve">
+    <value>Nach unten</value>
+  </data>
+  <data name="StillSet_RequirementsFormat" xml:space="preserve">
+    <value>{0}–{1} PNG-/GIF-Frames (transparentes PNG empfohlen). Werden automatisch für den Infobereich skaliert.</value>
+  </data>
+  <data name="StillSet_Save" xml:space="preserve">
+    <value>Speichern</value>
+  </data>
+  <data name="StillSet_Delete" xml:space="preserve">
+    <value>Löschen…</value>
+  </data>
+  <data name="StillSet_Close" xml:space="preserve">
+    <value>Schließen</value>
+  </data>
+  <data name="StillSet_SelectFramesTitle" xml:space="preserve">
+    <value>Frames für den Standbildmodus auswählen</value>
+  </data>
+  <data name="StillSet_HintOkFormat" xml:space="preserve">
+    <value>{0}–{1} transparente PNGs. Werden automatisch für den Infobereich skaliert. ({2} Frames)</value>
+  </data>
+  <data name="StillSet_HintNeedFormat" xml:space="preserve">
+    <value>{0}–{1} transparente PNGs sind erforderlich. (aktuell {2})</value>
+  </data>
+  <data name="StillSet_FrameCountFormat" xml:space="preserve">
+    <value>Bitte {0}–{1} Frames verwenden.</value>
+  </data>
+  <data name="StillSet_ConfirmOverwriteFormat" xml:space="preserve">
+    <value>"{0}" existiert bereits. Überschreiben?</value>
+  </data>
+  <data name="StillSet_ConfirmDeleteFormat" xml:space="preserve">
+    <value>"{0}" löschen?</value>
+  </data>
 </root>

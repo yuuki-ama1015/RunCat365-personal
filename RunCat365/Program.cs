@@ -116,7 +116,12 @@ namespace RunCat365
         private TemperatureRange temperatureRange = TemperatureRange.Default;
         private FPSMaxLimit fpsMaxLimit = FPSMaxLimit.FPS40;
         private int fetchCounter = 5;
+        private const int LOGGED_FETCH_FAILURE_LIMIT = 20;
+        private static readonly TimeSpan BackgroundUpdateShutdownTimeout = TimeSpan.FromSeconds(3);
+        private readonly HashSet<string> loggedFetchFailures = [];
+        private Task? backgroundUpdate;
         private bool isFetching;
+        private bool isShuttingDown;
         private bool lastTemperatureAvailable;
         // Still sets that failed to load, with the time we may try again (avoids re-reading disk every fetch).
         private readonly Dictionary<string, DateTime> stillSetRetryAfter = new(StringComparer.OrdinalIgnoreCase);
@@ -959,7 +964,7 @@ namespace RunCat365
             isFetching = true;
             try
             {
-                var doHeavySlice = await Task.Run(() =>
+                var update = Task.Run(() =>
                 {
                     cpuRepository.Update();
                     gpuRepository.Update();
@@ -972,19 +977,40 @@ namespace RunCat365
                     networkRepository.Update();
                     return true;
                 });
+                backgroundUpdate = update;
+                var doHeavySlice = await update;
 
-                if (!doHeavySlice) return;
+                if (isShuttingDown || !doHeavySlice) return;
 
                 SyncTemperatureAvailability();
                 FetchSystemInfo();
             }
             catch (Exception exception)
             {
-                Console.WriteLine($"FetchTick failed: {exception.Message}");
+                LogFetchFailureOnce(exception);
             }
             finally
             {
                 isFetching = false;
+            }
+        }
+
+        private void LogFetchFailureOnce(Exception exception)
+        {
+            if (LOGGED_FETCH_FAILURE_LIMIT <= loggedFetchFailures.Count) return;
+            var failure = $"{exception.GetType().Name}: {exception.Message}";
+            if (!loggedFetchFailures.Add(failure)) return;
+            StartupLog.Append($"Fetch failed: {failure}");
+        }
+
+        private void WaitForBackgroundUpdate()
+        {
+            try
+            {
+                backgroundUpdate?.Wait(BackgroundUpdateShutdownTimeout);
+            }
+            catch (AggregateException)
+            {
             }
         }
 
@@ -1025,8 +1051,10 @@ namespace RunCat365
             {
                 SystemEvents.UserPreferenceChanged -= UserPreferenceChanged;
 
+                isShuttingDown = true;
                 fetchTimer?.Stop();
                 fetchTimer?.Dispose();
+                WaitForBackgroundUpdate();
 
                 cpuRepository?.Close();
                 gpuRepository?.Close();
